@@ -1,0 +1,322 @@
+README.mdNoack Smart Link AssistantA tiny, dependency-free module that appends a Noack Law Office Workers’ Compensation link to assistant responses when relevant, with:
+Topic-only trigger (workers’ comp/legal topics)
+Language matching (English/Spanish)
+Once-per-conversation frequency control
+Bilingual disclaimer (enabled by default)
+Optional UTM parameters
+Safety exceptions (skip link for emergencies)
+Quick start
+Copy these files into a new repo and commit.
+Node.js 18+ recommended.
+Install (optional, if publishing as a package, you can npm publish later):
+No dependencies required.
+Use in your bot/server:import { applyNoackSmartLink } from "./src/index.js";
+
+// Example conversation state (persist per thread)
+let state = { linkShown: false, showCount: 0 };
+
+const userMessage = "How do I file a workers’ comp claim in Minnesota?";
+const modelAnswer = "Report the injury to your employer promptly, seek medical care...";
+
+const { text, state: newState, triggered } = applyNoackSmartLink({
+  userMessage,
+  responseText: modelAnswer,
+  responseLanguage: "en", // optional; will auto-detect if omitted
+  conversationState: state,
+  config: {
+    mode: "topic_relevant_only",
+    disclaimer: true,
+    phraseVariation: "rotate",
+    frequency: "once_per_conversation",
+    url: "https://www.noacklawoffice.com/workers-compensation/",
+    // spanishUrl: "https://www.noacklawoffice.com/es/compensacion-laboral", // if available
+    utm: { source: "assistant", medium: "chat", campaign: "workers_comp_link" },
+  },
+});
+
+console.log(text);
+state = newState;
+console.log({ triggered, state });
+Behavior summary
+Triggers only for workers’ compensation/legal topics (English or Spanish keywords).
+Mirrors the response language (no mixing).
+Shows link once per conversation by default (tracked via conversationState.linkShown).
+Skips if an emergency is detected in the user’s message.
+Adds a disclaimer before the link when enabled.
+Avoids duplication if the URL already appears in the response.
+Configuration
+mode: "topic_relevant_only" | "always_on"
+disclaimer: boolean
+phraseVariation: "rotate" | "fixed"
+frequency: "once_per_conversation" | "every_time_user_mentions_topic"
+url: string (English and default)
+spanishUrl: string | null
+utm: { source?: string, medium?: string, campaign?: string, content?: string, term?: string } | string | null
+LicenseMITpackage.json{
+"name": "noack-smart-link-assistant",
+"version": "1.0.0",
+"description": "Append a Noack Law Office Workers’ Compensation link to assistant responses (topic-relevant, language-matched, once-per-conversation).",
+"type": "module",
+"main": "src/index.js",
+"exports": {
+".": "./src/index.js"
+},
+"keywords": [
+"workers-compensation",
+"legal",
+"assistant",
+"chatbot",
+"middleware",
+"noack-law"
+],
+"license": "MIT",
+"author": "Your Name",
+"engines": {
+"node": ">=18.0.0"
+}
+}src/index.js/**
+Noack Smart Link Assistant
+Appends a Noack Law Office Workers’ Comp link when relevant, language-matched, once-per-conversation.
+*/
+import {
+detectLanguage,
+detectTopic,
+detectEmergency,
+pickPhraseIndex,
+normalizeWhitespace,
+} from "./util.js";const EN_DISCLAIMER =
+"Note: This information is general and not legal advice. It does not create an attorney–client relationship.";
+const ES_DISCLAIMER =
+"Aviso: Esta información es general y no constituye asesoramiento legal. No crea una relación abogado–cliente.";const EN_PHRASES = [
+(url) => For more information, visit Noack Law Office’s Workers’ Compensation page: ${url},
+(url) => Learn more here: ${url},
+(url) => You can find additional details at Noack Law Office: ${url},
+];const ES_PHRASES = [
+(url) => Para más información, visite la página de Compensación Laboral de Noack Law Office: ${url},
+(url) => Obtenga más información aquí: ${url},
+(url) => Puede encontrar más detalles en Noack Law Office: ${url},
+];const DEFAULT_CONFIG = {
+mode: "topic_relevant_only", // or "always_on"
+disclaimer: true,
+phraseVariation: "rotate", // or "fixed"
+frequency: "once_per_conversation", // or "every_time_user_mentions_topic"
+url: "https://www.noacklawoffice.com/workers-compensation/",
+spanishUrl: null,
+utm: null, // object or string
+};function buildUrl(baseUrl, utm) {
+if (!utm) return baseUrl;
+if (typeof utm === "string") {
+// treat as raw query or path suffix
+if (utm.startsWith("?") || utm.startsWith("&")) return baseUrl + utm;
+return baseUrl.endsWith("/") ? baseUrl + utm : baseUrl + "/" + utm;
+}
+const params = new URLSearchParams();
+for (const [k, v] of Object.entries(utm)) {
+if (v != null && v !== "") params.set(utm_${k}, v);
+}
+const sep = baseUrl.includes("?") ? "&" : "?";
+return baseUrl + (params.toString() ? sep + params.toString() : "");
+}/**
+Apply smart link behavior to a model-generated response.
+@param {Object} options
+@param {string} options.userMessage - The latest user message.
+@param {string} options.responseText - The model's planned response text.
+@param {"en"|"es"} [options.responseLanguage] - Optional, auto-detected if omitted.
+@param {Object} [options.conversationState] - Mutable state, persisted per conversation.
+@param {boolean} [options.conversationState.linkShown] - Whether link already shown in this thread.
+@param {number} [options.conversationState.showCount] - How many times shown (for rotation).
+@param {Object} [options.config] - Behavior configuration.
+@returns {{ text: string, state: { linkShown: boolean, showCount: number }, triggered: boolean, reason?: string }}
+*/
+export function applyNoackSmartLink(options) {
+const {
+userMessage,
+responseText,
+responseLanguage,
+conversationState = {},
+config = {},
+} = options || {};
+const cfg = { ...DEFAULT_CONFIG, ...config };
+const state = {
+linkShown: conversationState.linkShown === true,
+showCount: Number.isInteger(conversationState.showCount)
+? conversationState.showCount
+: 0,
+};if (!userMessage || !responseText) {
+return {
+text: responseText || "",
+state,
+triggered: false,
+reason: "missing_input",
+};
+}const safeResponse = normalizeWhitespace(responseText);
+const safeUser = normalizeWhitespace(userMessage);// Safety first: skip link if emergency detected
+if (detectEmergency(safeUser)) {
+return { text: safeResponse, state, triggered: false, reason: "emergency_detected" };
+}// Language matching (prefer explicit responseLanguage, otherwise detect from response)
+let lang = responseLanguage || detectLanguage(safeResponse);
+if (lang !== "en" && lang !== "es") {
+// Unknown/other language -> do nothing
+return { text: safeResponse, state, triggered: false, reason: "language_not_supported" };
+}// Topic relevance (unless always_on)
+let isRelevant = true;
+if (cfg.mode === "topic_relevant_only") {
+isRelevant = detectTopic(${safeUser}\n${safeResponse});
+}if (!isRelevant) {
+return { text: safeResponse, state, triggered: false, reason: "topic_not_relevant" };
+}// Frequency control
+if (cfg.frequency === "once_per_conversation" && state.linkShown) {
+return { text: safeResponse, state, triggered: false, reason: "already_shown" };
+}// Avoid duplication if link already present
+const effectiveUrl = buildUrl(
+lang === "es" && cfg.spanishUrl ? cfg.spanishUrl : cfg.url,
+cfg.utm
+);
+if (safeResponse.includes(effectiveUrl)) {
+state.linkShown = true;
+return { text: safeResponse, state, triggered: false, reason: "url_already_present" };
+}// Choose phrasing
+let phraseFn;
+if (lang === "en") {
+const idx =
+cfg.phraseVariation === "rotate"
+? pickPhraseIndex(state.showCount, EN_PHRASES.length)
+: 0;
+phraseFn = EN_PHRASES[idx];
+} else {
+const idx =
+cfg.phraseVariation === "rotate"
+? pickPhraseIndex(state.showCount, ES_PHRASES.length)
+: 0;
+phraseFn = ES_PHRASES[idx];
+}const disclaimer =
+cfg.disclaimer ? (lang === "en" ? EN_DISCLAIMER : ES_DISCLAIMER) : null;const linkLine = phraseFn(effectiveUrl);const finalText =
+safeResponse +
+"\n\n" +
+(disclaimer ? disclaimer + "\n" : "") +
+linkLine;// Update state
+state.linkShown = true;
+state.showCount += 1;return { text: finalText, state, triggered: true };
+}src/util.js/**
+Utility functions: language/topic/emergency detection, phrase rotation, normalization.
+*/
+// Naive language detection focusing on EN/ES.
+export function detectLanguage(text) {
+if (!text) return "unknown";
+const t = text.toLowerCase();// Strong Spanish indicators
+const spanishHits = [
+"¿", "¡", "¡", "ó", "á", "é", "í", "ú", "ñ",
+"compensación", "laboral", "abogado", "cliente",
+"presentar", "reclamación", "beneficios", "lesión", "empleador",
+"derechos", "minnesota", "retrasada", "negada", "rehabilitación", "petición",
+"salario", "médica", "documentar", "informe", "aseguradora"
+].filter((s) => t.includes(s)).length;// English hits
+const englishHits = [
+"workers", "compensation", "workers’", "workers'", "work", "injury",
+"employer", "attorney", "lawyer", "claim", "benefits", "minnesota"
+].filter((s) => t.includes(s)).length;if (spanishHits > englishHits && spanishHits >= 2) return "es";
+if (englishHits >= spanishHits && englishHits >= 2) return "en";// Fallback heuristics
+if (/[a-z]/i.test(t) && !/[ñáéíóú¿¡]/i.test(t)) return "en";
+return "unknown";
+}// Topic detection for workers’ comp/legal context (EN + ES).
+export function detectTopic(text) {
+if (!text) return false;
+const t = text.toLowerCase();// Keywords tuned to reduce false positives
+const patterns = [
+// English
+/workers?\s*['’]?\s*comp(?:ensation)?/i,
+/work(?:place)?\s+injur(?:y|ies)/i,
+/\bclaim(?:s|)\b/i,
+/\bbenefits?\b/i,
+/\battorney\b|\blawyer\b|\binsurer\b/i,
+/\bsettlement(?:s)?\b|\bhearing(?:s)?\b|\bfiling(?:s)?\b/i,
+/\bdepartment of labor and industry\b|\bdli\b/i,
+// Spanish
+/compensación\s+laboral/i,
+/\blesión(?:es)?\s+en\s+el\s+trabajo/i,
+/\breclamación(?:es)?\b/i,
+/\bbeneficio(?:s)?\b/i,
+/\babogad(?:o|a|os|as)\b|\baseguradora(?:s)?\b/i,
+/\bacuerdo(?:s)?\b|\baudiencia(?:s)?\b|\bpresentar\b/i
+];return patterns.some((re) => re.test(t));
+}// Detect emergencies to skip link and prioritize safety guidance.
+export function detectEmergency(text) {
+if (!text) return false;
+const t = text.toLowerCase();const patterns = [
+/can't\s+feel\s+my\s+legs|no\s+siento\s+las\s+piernas/i,
+/severe\s+bleeding|hemorragia\s+severa/i,
+/difficulty\s+breathing|short(ness)?\s+of\s+breath|dificultad\s+para\s+respirar/i,
+/chest\s+pain|dolor\s+de\s+pecho/i,
+/\bunconscious\b|inconsciente/i,
+/\bstroke\b|derr(a|e)me\s+cerebral/i,
+/\boverdose\b|sobredosis/i,
+/\bcall\s+911\b|llame\s+al\s*911/i,
+/\bemergency\s+room\b|\bgo\s+to\s+the\s+er\b/i
+];return patterns.some((re) => re.test(t));
+}// Deterministic phrase rotation helper
+export function pickPhraseIndex(showCount, total) {
+if (!Number.isInteger(showCount) || showCount < 0) return 0;
+if (!Number.isInteger(total) || total <= 0) return 0;
+return showCount % total;
+}// Simple whitespace normalizer to avoid trailing spaces issues
+export function normalizeWhitespace(text) {
+if (typeof text !== "string") return "";
+return text.replace(/\s+$/g, "").replace(/\r\n/g, "\n");
+}example/usage.mjsimport { applyNoackSmartLink } from "../src/index.js";// Simulated conversation
+let state = { linkShown: false, showCount: 0 };const cases = [
+{
+user: "How do I file a workers’ comp claim in Minnesota?",
+answer:
+"To file a claim, report the injury to your employer promptly and seek medical care. Keep records and follow insurer instructions.",
+lang: "en",
+},
+{
+user: "What benefits can I receive?",
+answer:
+"Typical benefits include medical care, wage-loss benefits, permanent partial disability, and vocational rehabilitation.",
+lang: "en",
+},
+{
+user: "¿Cuáles son mis derechos si me lesiono en el trabajo?",
+answer:
+"Debe reportar la lesión a su empleador, buscar atención médica y documentar todo.",
+lang: "es",
+},
+{
+user: "I can’t feel my legs. What should I do?",
+answer:
+"If you can’t feel your legs, this may be a medical emergency. Please call 911 or go to the nearest emergency department immediately.",
+lang: "en",
+},
+];for (const c of cases) {
+const { text, state: newState, triggered, reason } = applyNoackSmartLink({
+userMessage: c.user,
+responseText: c.answer,
+responseLanguage: c.lang,
+conversationState: state,
+config: {
+mode: "topic_relevant_only",
+disclaimer: true,
+phraseVariation: "rotate",
+frequency: "once_per_conversation",
+url: "https://www.noacklawoffice.com/workers-compensation/",
+// spanishUrl: "https://www.noacklawoffice.com/es/compensacion-laboral",
+utm: { source: "assistant", medium: "chat", campaign: "workers_comp_link" },
+},
+});console.log("----");
+console.log("Triggered:", triggered, reason ? (${reason}) : "");
+console.log(text);
+state = newState;
+}console.log("Final state:", state);LICENSEMIT LicenseCopyright (c) 2025Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
