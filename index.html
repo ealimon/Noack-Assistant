@@ -1,72 +1,49 @@
-README.mdNoack Smart Link AssistantA tiny, dependency-free module that appends a Noack Law Office Workers’ Compensation link to assistant responses when relevant, with:
-Topic-only trigger (workers’ comp/legal topics)
-Language matching (English/Spanish)
-Once-per-conversation frequency control
-Bilingual disclaimer (enabled by default)
-Optional UTM parameters
-Safety exceptions (skip link for emergencies)
+README.mdNoack AI Assistant (Language-Matched Smart Link)A dependency-free Node.js assistant that:
+Detects topic relevance (workers’ compensation/legal)
+Matches the response language (English/Spanish)
+Appends a Noack Law Office Workers’ Comp link once per conversation
+Includes bilingual disclaimers (English/Spanish)
+Skips the link if an emergency is detected
+Works as a CLI or a minimal HTTP server
 Quick start
-Copy these files into a new repo and commit.
-Node.js 18+ recommended.
-Install (optional, if publishing as a package, you can npm publish later):
-No dependencies required.
-Use in your bot/server:import { applyNoackSmartLink } from "./src/index.js";
-
-// Example conversation state (persist per thread)
-let state = { linkShown: false, showCount: 0 };
-
-const userMessage = "How do I file a workers’ comp claim in Minnesota?";
-const modelAnswer = "Report the injury to your employer promptly, seek medical care...";
-
-const { text, state: newState, triggered } = applyNoackSmartLink({
-  userMessage,
-  responseText: modelAnswer,
-  responseLanguage: "en", // optional; will auto-detect if omitted
-  conversationState: state,
-  config: {
-    mode: "topic_relevant_only",
-    disclaimer: true,
-    phraseVariation: "rotate",
-    frequency: "once_per_conversation",
-    url: "https://www.noacklawoffice.com/workers-compensation/",
-    // spanishUrl: "https://www.noacklawoffice.com/es/compensacion-laboral", // if available
-    utm: { source: "assistant", medium: "chat", campaign: "workers_comp_link" },
-  },
-});
-
-console.log(text);
-state = newState;
-console.log({ triggered, state });
-Behavior summary
-Triggers only for workers’ compensation/legal topics (English or Spanish keywords).
-Mirrors the response language (no mixing).
-Shows link once per conversation by default (tracked via conversationState.linkShown).
-Skips if an emergency is detected in the user’s message.
-Adds a disclaimer before the link when enabled.
-Avoids duplication if the URL already appears in the response.
+Node.js 18+ recommended
+No dependencies required
+Run CLI:
+npm run start:cli
+Run HTTP server (port 3000):
+npm run start:server
+curl -X POST http://localhost:3000/chat -H "Content-Type: application/json" -d '{"conversationId":"demo","message":"How do I file a workers’ comp claim in Minnesota?"}'
+Repo structure
+src/util.js: Language, topic, and emergency detection helpers
+src/index.js: Smart link appender (applyNoackSmartLink)
+src/assistant.js: Assistant logic (generates answers, applies smart link)
+example/cli.mjs: Terminal chat loop
+example/server.mjs: Minimal HTTP JSON API
+package.json: ESM config and scripts
+LICENSE: MIT
 Configuration
-mode: "topic_relevant_only" | "always_on"
-disclaimer: boolean
-phraseVariation: "rotate" | "fixed"
-frequency: "once_per_conversation" | "every_time_user_mentions_topic"
-url: string (English and default)
-spanishUrl: string | null
-utm: { source?: string, medium?: string, campaign?: string, content?: string, term?: string } | string | null
-LicenseMITpackage.json{
-"name": "noack-smart-link-assistant",
+Adjust the link, disclaimer, and frequency in src/index.js DEFAULT_CONFIG
+Or pass overrides when creating the assistant (see src/assistant.js)
+package.json{
+"name": "noack-ai-assistant",
 "version": "1.0.0",
-"description": "Append a Noack Law Office Workers’ Compensation link to assistant responses (topic-relevant, language-matched, once-per-conversation).",
+"description": "AI assistant with language-matched smart link behavior for Noack Law Office.",
 "type": "module",
-"main": "src/index.js",
+"main": "src/assistant.js",
 "exports": {
-".": "./src/index.js"
+".": "./src/assistant.js",
+"./smart-link": "./src/index.js",
+"./util": "./src/util.js"
+},
+"scripts": {
+"start:cli": "node example/cli.mjs",
+"start:server": "node example/server.mjs"
 },
 "keywords": [
 "workers-compensation",
 "legal",
 "assistant",
 "chatbot",
-"middleware",
 "noack-law"
 ],
 "license": "MIT",
@@ -95,7 +72,7 @@ const ES_DISCLAIMER =
 (url) => Para más información, visite la página de Compensación Laboral de Noack Law Office: ${url},
 (url) => Obtenga más información aquí: ${url},
 (url) => Puede encontrar más detalles en Noack Law Office: ${url},
-];const DEFAULT_CONFIG = {
+];export const DEFAULT_CONFIG = {
 mode: "topic_relevant_only", // or "always_on"
 disclaimer: true,
 phraseVariation: "rotate", // or "fixed"
@@ -103,10 +80,12 @@ frequency: "once_per_conversation", // or "every_time_user_mentions_topic"
 url: "https://www.noacklawoffice.com/workers-compensation/",
 spanishUrl: null,
 utm: null, // object or string
-};function buildUrl(baseUrl, utm) {
+};/**
+Build final URL with optional UTM parameters.
+*/
+function buildUrl(baseUrl, utm) {
 if (!utm) return baseUrl;
 if (typeof utm === "string") {
-// treat as raw query or path suffix
 if (utm.startsWith("?") || utm.startsWith("&")) return baseUrl + utm;
 return baseUrl.endsWith("/") ? baseUrl + utm : baseUrl + "/" + utm;
 }
@@ -116,12 +95,13 @@ if (v != null && v !== "") params.set(utm_${k}, v);
 }
 const sep = baseUrl.includes("?") ? "&" : "?";
 return baseUrl + (params.toString() ? sep + params.toString() : "");
-}/**
+}
+/**
 Apply smart link behavior to a model-generated response.
 @param {Object} options
 @param {string} options.userMessage - The latest user message.
 @param {string} options.responseText - The model's planned response text.
-@param {"en"|"es"} [options.responseLanguage] - Optional, auto-detected if omitted.
+@param {"en"|"es"} [options.responseLanguage] - Optional; auto-detected if omitted.
 @param {Object} [options.conversationState] - Mutable state, persisted per conversation.
 @param {boolean} [options.conversationState.linkShown] - Whether link already shown in this thread.
 @param {number} [options.conversationState.showCount] - How many times shown (for rotation).
@@ -205,7 +185,7 @@ export function detectLanguage(text) {
 if (!text) return "unknown";
 const t = text.toLowerCase();// Strong Spanish indicators
 const spanishHits = [
-"¿", "¡", "¡", "ó", "á", "é", "í", "ú", "ñ",
+"¿", "¡", "ó", "á", "é", "í", "ú", "ñ",
 "compensación", "laboral", "abogado", "cliente",
 "presentar", "reclamación", "beneficios", "lesión", "empleador",
 "derechos", "minnesota", "retrasada", "negada", "rehabilitación", "petición",
@@ -262,52 +242,147 @@ return showCount % total;
 export function normalizeWhitespace(text) {
 if (typeof text !== "string") return "";
 return text.replace(/\s+$/g, "").replace(/\r\n/g, "\n");
-}example/usage.mjsimport { applyNoackSmartLink } from "../src/index.js";// Simulated conversation
-let state = { linkShown: false, showCount: 0 };const cases = [
-{
-user: "How do I file a workers’ comp claim in Minnesota?",
-answer:
-"To file a claim, report the injury to your employer promptly and seek medical care. Keep records and follow insurer instructions.",
-lang: "en",
-},
-{
-user: "What benefits can I receive?",
-answer:
-"Typical benefits include medical care, wage-loss benefits, permanent partial disability, and vocational rehabilitation.",
-lang: "en",
-},
-{
-user: "¿Cuáles son mis derechos si me lesiono en el trabajo?",
-answer:
-"Debe reportar la lesión a su empleador, buscar atención médica y documentar todo.",
-lang: "es",
-},
-{
-user: "I can’t feel my legs. What should I do?",
-answer:
-"If you can’t feel your legs, this may be a medical emergency. Please call 911 or go to the nearest emergency department immediately.",
-lang: "en",
-},
-];for (const c of cases) {
-const { text, state: newState, triggered, reason } = applyNoackSmartLink({
-userMessage: c.user,
-responseText: c.answer,
-responseLanguage: c.lang,
-conversationState: state,
-config: {
+}src/assistant.js/**
+Noack AI Assistant
+Simple, dependency-free assistant that generates responses and applies the smart link behavior.
+*/
+import { applyNoackSmartLink, DEFAULT_CONFIG } from "./index.js";
+import { detectLanguage, detectTopic, detectEmergency, normalizeWhitespace } from "./util.js";export class NoackAssistant {
+constructor(config = {}) {
+this.config = { ...DEFAULT_CONFIG, ...config };
+this.conversations = new Map(); // conversationId -> { linkShown, showCount }
+}getState(conversationId = "default") {
+if (!this.conversations.has(conversationId)) {
+this.conversations.set(conversationId, { linkShown: false, showCount: 0 });
+}
+return this.conversations.get(conversationId);
+}setState(conversationId, state) {
+this.conversations.set(conversationId, state);
+}/**
+Generate a base answer (stubbed logic). Replace with your LLM call if desired.
+*/
+generateBaseAnswer(userMessage, lang) {
+const msg = normalizeWhitespace(userMessage || "");
+if (detectEmergency(msg)) {
+if (lang === "es") {
+return "Si no puede sentir las piernas o tiene una emergencia médica, llame al 911 o vaya a la sala de emergencias de inmediato. Luego, podemos hablar sobre cómo documentar y reportar la lesión.";
+}
+return "If you’re experiencing a medical emergency, call 911 or go to the nearest emergency department immediately. Once you’re safe, we can discuss documenting and reporting the injury.";
+}
+const relevant = detectTopic(msg);
+if (relevant) {
+  if (lang === "es") {
+    return [
+      "Para presentar una reclamación de compensación laboral en Minnesota:",
+      "1) Informe la lesión a su empleador lo antes posible (idealmente dentro de 14 días).",
+      "2) Busque atención médica y diga que la lesión es laboral.",
+      "3) Guarde registros de fechas, síntomas, testigos y facturas.",
+      "4) Si la aseguradora niega o retrasa la reclamación, puede presentar una petición o consultar con un abogado.",
+      "5) Siga las indicaciones de su médico y su empleador; las omisiones pueden afectar sus beneficios.",
+    ].join("\n");
+  }
+  return [
+    "To file a Minnesota workers’ comp claim:",
+    "1) Report the injury to your employer as soon as possible (ideally within 14 days).",
+    "2) Seek medical care and tell the provider the injury is work-related.",
+    "3) Keep records of dates, symptoms, witnesses, and medical bills.",
+    "4) If the insurer denies or delays the claim, you can file a Claim Petition or consult an attorney.",
+    "5) Follow your doctor’s restrictions; noncompliance can affect benefits.",
+  ].join("\n");
+}
+
+// Non-legal/general fallback
+if (lang === "es") {
+  return "Puedo ayudar con preguntas generales o de compensación laboral. ¿Qué le gustaría saber?";
+}
+return "I can help with general questions or workers’ compensation topics. What would you like to know?";
+}/**
+Handle a user message and return the assistant’s response with smart link behavior applied.
+@param {Object} input
+@param {string} input.userMessage
+@param {string} [input.conversationId="default"]
+@returns {Promise<{ text: string, triggered: boolean }>}
+*/
+async respond(input) {
+const { userMessage, conversationId = "default" } = input || {};
+const state = this.getState(conversationId);
+// Language: mirror user's language when possible
+let lang = detectLanguage(userMessage);
+if (lang !== "en" && lang !== "es") lang = "en";
+
+const baseAnswer = this.generateBaseAnswer(userMessage, lang);
+
+const { text, state: newState, triggered } = applyNoackSmartLink({
+  userMessage,
+  responseText: baseAnswer,
+  responseLanguage: lang,
+  conversationState: state,
+  config: this.config,
+});
+
+this.setState(conversationId, newState);
+return { text, triggered };
+}
+}export default NoackAssistant;example/cli.mjsimport { NoackAssistant } from "../src/assistant.js";
+import readline from "node:readline";const assistant = new NoackAssistant({
 mode: "topic_relevant_only",
 disclaimer: true,
 phraseVariation: "rotate",
 frequency: "once_per_conversation",
 url: "https://www.noacklawoffice.com/workers-compensation/",
 // spanishUrl: "https://www.noacklawoffice.com/es/compensacion-laboral",
-utm: { source: "assistant", medium: "chat", campaign: "workers_comp_link" },
-},
-});console.log("----");
-console.log("Triggered:", triggered, reason ? (${reason}) : "");
-console.log(text);
-state = newState;
-}console.log("Final state:", state);LICENSEMIT LicenseCopyright (c) 2025Permission is hereby granted, free of charge, to any person obtaining a copy
+utm: { source: "assistant", medium: "cli", campaign: "workers_comp_link" },
+});const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+console.log("Noack Assistant CLI. Type your message. Ctrl+C to exit.");function ask() {
+rl.question("> ", async (line) => {
+const { text, triggered } = await assistant.respond({ userMessage: line, conversationId: "cli" });
+console.log("\n" + text + "\n");
+console.log((smart link ${triggered ? "added" : "not added"})\n);
+ask();
+});
+}ask();example/server.mjsimport http from "node:http";
+import { NoackAssistant } from "../src/assistant.js";const assistant = new NoackAssistant({
+mode: "topic_relevant_only",
+disclaimer: true,
+phraseVariation: "rotate",
+frequency: "once_per_conversation",
+url: "https://www.noacklawoffice.com/workers-compensation/",
+// spanishUrl: "https://www.noacklawoffice.com/es/compensacion-laboral",
+utm: { source: "assistant", medium: "api", campaign: "workers_comp_link" },
+});const server = http.createServer(async (req, res) => {
+if (req.method === "POST" && req.url === "/chat") {
+let body = "";
+req.on("data", (chunk) => (body += chunk));
+req.on("end", async () => {
+try {
+const data = JSON.parse(body || "{}");
+const conversationId = data.conversationId || "default";
+const message = data.message || "";    const { text, triggered } = await assistant.respond({
+      userMessage: message,
+      conversationId,
+    });
+
+    const response = {
+      conversationId,
+      text,
+      smartLinkAdded: triggered,
+    };
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(response));
+  } catch (e) {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Invalid request", details: String(e) }));
+  }
+});
+return;
+}res.writeHead(404, { "Content-Type": "application/json" });
+res.end(JSON.stringify({ error: "Not found" }));
+});const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+console.log(Noack Assistant HTTP server listening on http://localhost:${PORT});
+console.log("POST /chat with { conversationId, message }");
+});LICENSEMIT LicenseCopyright (c) 2025Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the “Software”), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
