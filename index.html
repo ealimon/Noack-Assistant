@@ -1,397 +1,454 @@
-README.mdNoack AI Assistant (Language-Matched Smart Link)A dependency-free Node.js assistant that:
-Detects topic relevance (workers’ compensation/legal)
-Matches the response language (English/Spanish)
-Appends a Noack Law Office Workers’ Comp link once per conversation
-Includes bilingual disclaimers (English/Spanish)
-Skips the link if an emergency is detected
-Works as a CLI or a minimal HTTP server
-Quick start
-Node.js 18+ recommended
-No dependencies required
-Run CLI:
-npm run start:cli
-Run HTTP server (port 3000):
-npm run start:server
-curl -X POST http://localhost:3000/chat -H "Content-Type: application/json" -d '{"conversationId":"demo","message":"How do I file a workers’ comp claim in Minnesota?"}'
-Repo structure
-src/util.js: Language, topic, and emergency detection helpers
-src/index.js: Smart link appender (applyNoackSmartLink)
-src/assistant.js: Assistant logic (generates answers, applies smart link)
-example/cli.mjs: Terminal chat loop
-example/server.mjs: Minimal HTTP JSON API
-package.json: ESM config and scripts
-LICENSE: MIT
-Configuration
-Adjust the link, disclaimer, and frequency in src/index.js DEFAULT_CONFIG
-Or pass overrides when creating the assistant (see src/assistant.js)
-package.json{
-"name": "noack-ai-assistant",
-"version": "1.0.0",
-"description": "AI assistant with language-matched smart link behavior for Noack Law Office.",
-"type": "module",
-"main": "src/assistant.js",
-"exports": {
-".": "./src/assistant.js",
-"./smart-link": "./src/index.js",
-"./util": "./src/util.js"
-},
-"scripts": {
-"start:cli": "node example/cli.mjs",
-"start:server": "node example/server.mjs"
-},
-"keywords": [
-"workers-compensation",
-"legal",
-"assistant",
-"chatbot",
-"noack-law"
-],
-"license": "MIT",
-"author": "Your Name",
-"engines": {
-"node": ">=18.0.0"
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Noack Law — Workers’ Comp Assistant (Preview)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --primary: #0b57d0;
+      --primary-contrast: #fff;
+      --bg: #ffffff;
+      --text: #1f2328;
+      --muted: #5f6b7a;
+      --surface: #f4f6f8;
+      --border: #d9dee3;
+      --shadow: 0 12px 40px rgba(0,0,0,0.18);
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); background: #fff; }/* Simple landing content (for preview) */
+.hero {
+  padding: 48px 20px 80px;
+  max-width: 960px;
+  margin: 0 auto;
 }
-}src/index.js/**
-Noack Smart Link Assistant
-Appends a Noack Law Office Workers’ Comp link when relevant, language-matched, once-per-conversation.
-*/
-import {
-detectLanguage,
-detectTopic,
-detectEmergency,
-pickPhraseIndex,
-normalizeWhitespace,
-} from "./util.js";const EN_DISCLAIMER =
-"Note: This information is general and not legal advice. It does not create an attorney–client relationship.";
-const ES_DISCLAIMER =
-"Aviso: Esta información es general y no constituye asesoramiento legal. No crea una relación abogado–cliente.";const EN_PHRASES = [
-(url) => For more information, visit Noack Law Office’s Workers’ Compensation page: ${url},
-(url) => Learn more here: ${url},
-(url) => You can find additional details at Noack Law Office: ${url},
-];const ES_PHRASES = [
-(url) => Para más información, visite la página de Compensación Laboral de Noack Law Office: ${url},
-(url) => Obtenga más información aquí: ${url},
-(url) => Puede encontrar más detalles en Noack Law Office: ${url},
-];export const DEFAULT_CONFIG = {
-mode: "topic_relevant_only", // or "always_on"
-disclaimer: true,
-phraseVariation: "rotate", // or "fixed"
-frequency: "once_per_conversation", // or "every_time_user_mentions_topic"
-url: "https://www.noacklawoffice.com/workers-compensation/",
-spanishUrl: null,
-utm: null, // object or string
-};/**
-Build final URL with optional UTM parameters.
-*/
-function buildUrl(baseUrl, utm) {
-if (!utm) return baseUrl;
-if (typeof utm === "string") {
-if (utm.startsWith("?") || utm.startsWith("&")) return baseUrl + utm;
-return baseUrl.endsWith("/") ? baseUrl + utm : baseUrl + "/" + utm;
+.hero h1 { font-size: 36px; margin: 0 0 12px; }
+.hero p { color: var(--muted); font-size: 18px; margin: 0 0 24px; }
+.hero .cta { display: inline-block; background: var(--primary); color: #fff; padding: 12px 16px; border-radius: 8px; text-decoration: none; }
+
+/* Floating button */
+.noack-chat-button {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background: var(--primary);
+  color: var(--primary-contrast);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  z-index: 2147483645;
+  border: none;
 }
-const params = new URLSearchParams();
-for (const [k, v] of Object.entries(utm)) {
-if (v != null && v !== "") params.set(utm_${k}, v);
+.noack-chat-button:hover { filter: brightness(1.05); }
+.noack-chat-button:focus { outline: 3px solid rgba(11,87,208,0.35); }
+
+/* Overlay + modal */
+.noack-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: none;
+  z-index: 2147483646;
 }
-const sep = baseUrl.includes("?") ? "&" : "?";
-return baseUrl + (params.toString() ? sep + params.toString() : "");
+.noack-overlay.open { display: block; }
+.noack-modal {
+  position: fixed;
+  right: 20px;
+  bottom: 90px;
+  width: min(420px, calc(100vw - 32px));
+  height: min(70vh, 640px);
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: none;
+  z-index: 2147483647;
+  border: 1px solid var(--border);
 }
-/**
-Apply smart link behavior to a model-generated response.
-@param {Object} options
-@param {string} options.userMessage - The latest user message.
-@param {string} options.responseText - The model's planned response text.
-@param {"en"|"es"} [options.responseLanguage] - Optional; auto-detected if omitted.
-@param {Object} [options.conversationState] - Mutable state, persisted per conversation.
-@param {boolean} [options.conversationState.linkShown] - Whether link already shown in this thread.
-@param {number} [options.conversationState.showCount] - How many times shown (for rotation).
-@param {Object} [options.config] - Behavior configuration.
-@returns {{ text: string, state: { linkShown: boolean, showCount: number }, triggered: boolean, reason?: string }}
-*/
-export function applyNoackSmartLink(options) {
-const {
-userMessage,
-responseText,
-responseLanguage,
-conversationState = {},
-config = {},
-} = options || {};
-const cfg = { ...DEFAULT_CONFIG, ...config };
-const state = {
-linkShown: conversationState.linkShown === true,
-showCount: Number.isInteger(conversationState.showCount)
-? conversationState.showCount
-: 0,
-};if (!userMessage || !responseText) {
-return {
-text: responseText || "",
-state,
-triggered: false,
-reason: "missing_input",
-};
-}const safeResponse = normalizeWhitespace(responseText);
-const safeUser = normalizeWhitespace(userMessage);// Safety first: skip link if emergency detected
-if (detectEmergency(safeUser)) {
-return { text: safeResponse, state, triggered: false, reason: "emergency_detected" };
-}// Language matching (prefer explicit responseLanguage, otherwise detect from response)
-let lang = responseLanguage || detectLanguage(safeResponse);
-if (lang !== "en" && lang !== "es") {
-// Unknown/other language -> do nothing
-return { text: safeResponse, state, triggered: false, reason: "language_not_supported" };
-}// Topic relevance (unless always_on)
-let isRelevant = true;
-if (cfg.mode === "topic_relevant_only") {
-isRelevant = detectTopic(${safeUser}\n${safeResponse});
-}if (!isRelevant) {
-return { text: safeResponse, state, triggered: false, reason: "topic_not_relevant" };
-}// Frequency control
-if (cfg.frequency === "once_per_conversation" && state.linkShown) {
-return { text: safeResponse, state, triggered: false, reason: "already_shown" };
-}// Avoid duplication if link already present
-const effectiveUrl = buildUrl(
-lang === "es" && cfg.spanishUrl ? cfg.spanishUrl : cfg.url,
-cfg.utm
-);
-if (safeResponse.includes(effectiveUrl)) {
-state.linkShown = true;
-return { text: safeResponse, state, triggered: false, reason: "url_already_present" };
-}// Choose phrasing
-let phraseFn;
-if (lang === "en") {
-const idx =
-cfg.phraseVariation === "rotate"
-? pickPhraseIndex(state.showCount, EN_PHRASES.length)
-: 0;
-phraseFn = EN_PHRASES[idx];
-} else {
-const idx =
-cfg.phraseVariation === "rotate"
-? pickPhraseIndex(state.showCount, ES_PHRASES.length)
-: 0;
-phraseFn = ES_PHRASES[idx];
-}const disclaimer =
-cfg.disclaimer ? (lang === "en" ? EN_DISCLAIMER : ES_DISCLAIMER) : null;const linkLine = phraseFn(effectiveUrl);const finalText =
-safeResponse +
-"\n\n" +
-(disclaimer ? disclaimer + "\n" : "") +
-linkLine;// Update state
-state.linkShown = true;
-state.showCount += 1;return { text: finalText, state, triggered: true };
-}src/util.js/**
-Utility functions: language/topic/emergency detection, phrase rotation, normalization.
-*/
-// Naive language detection focusing on EN/ES.
-export function detectLanguage(text) {
-if (!text) return "unknown";
-const t = text.toLowerCase();// Strong Spanish indicators
-const spanishHits = [
-"¿", "¡", "ó", "á", "é", "í", "ú", "ñ",
-"compensación", "laboral", "abogado", "cliente",
-"presentar", "reclamación", "beneficios", "lesión", "empleador",
-"derechos", "minnesota", "retrasada", "negada", "rehabilitación", "petición",
-"salario", "médica", "documentar", "informe", "aseguradora"
-].filter((s) => t.includes(s)).length;// English hits
-const englishHits = [
-"workers", "compensation", "workers’", "workers'", "work", "injury",
-"employer", "attorney", "lawyer", "claim", "benefits", "minnesota"
-].filter((s) => t.includes(s)).length;if (spanishHits > englishHits && spanishHits >= 2) return "es";
-if (englishHits >= spanishHits && englishHits >= 2) return "en";// Fallback heuristics
-if (/[a-z]/i.test(t) && !/[ñáéíóú¿¡]/i.test(t)) return "en";
-return "unknown";
-}// Topic detection for workers’ comp/legal context (EN + ES).
-export function detectTopic(text) {
-if (!text) return false;
-const t = text.toLowerCase();// Keywords tuned to reduce false positives
-const patterns = [
-// English
-/workers?\s*['’]?\s*comp(?:ensation)?/i,
-/work(?:place)?\s+injur(?:y|ies)/i,
-/\bclaim(?:s|)\b/i,
-/\bbenefits?\b/i,
-/\battorney\b|\blawyer\b|\binsurer\b/i,
-/\bsettlement(?:s)?\b|\bhearing(?:s)?\b|\bfiling(?:s)?\b/i,
-/\bdepartment of labor and industry\b|\bdli\b/i,
-// Spanish
-/compensación\s+laboral/i,
-/\blesión(?:es)?\s+en\s+el\s+trabajo/i,
-/\breclamación(?:es)?\b/i,
-/\bbeneficio(?:s)?\b/i,
-/\babogad(?:o|a|os|as)\b|\baseguradora(?:s)?\b/i,
-/\bacuerdo(?:s)?\b|\baudiencia(?:s)?\b|\bpresentar\b/i
-];return patterns.some((re) => re.test(t));
-}// Detect emergencies to skip link and prioritize safety guidance.
-export function detectEmergency(text) {
-if (!text) return false;
-const t = text.toLowerCase();const patterns = [
-/can't\s+feel\s+my\s+legs|no\s+siento\s+las\s+piernas/i,
-/severe\s+bleeding|hemorragia\s+severa/i,
-/difficulty\s+breathing|short(ness)?\s+of\s+breath|dificultad\s+para\s+respirar/i,
-/chest\s+pain|dolor\s+de\s+pecho/i,
-/\bunconscious\b|inconsciente/i,
-/\bstroke\b|derr(a|e)me\s+cerebral/i,
-/\boverdose\b|sobredosis/i,
-/\bcall\s+911\b|llame\s+al\s*911/i,
-/\bemergency\s+room\b|\bgo\s+to\s+the\s+er\b/i
-];return patterns.some((re) => re.test(t));
-}// Deterministic phrase rotation helper
-export function pickPhraseIndex(showCount, total) {
-if (!Number.isInteger(showCount) || showCount < 0) return 0;
-if (!Number.isInteger(total) || total <= 0) return 0;
-return showCount % total;
-}// Simple whitespace normalizer to avoid trailing spaces issues
-export function normalizeWhitespace(text) {
-if (typeof text !== "string") return "";
-return text.replace(/\s+$/g, "").replace(/\r\n/g, "\n");
-}src/assistant.js/**
-Noack AI Assistant
-Simple, dependency-free assistant that generates responses and applies the smart link behavior.
-*/
-import { applyNoackSmartLink, DEFAULT_CONFIG } from "./index.js";
-import { detectLanguage, detectTopic, detectEmergency, normalizeWhitespace } from "./util.js";export class NoackAssistant {
-constructor(config = {}) {
-this.config = { ...DEFAULT_CONFIG, ...config };
-this.conversations = new Map(); // conversationId -> { linkShown, showCount }
-}getState(conversationId = "default") {
-if (!this.conversations.has(conversationId)) {
-this.conversations.set(conversationId, { linkShown: false, showCount: 0 });
+.noack-modal.open { display: flex; flex-direction: column; }
+
+.noack-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
-return this.conversations.get(conversationId);
-}setState(conversationId, state) {
-this.conversations.set(conversationId, state);
-}/**
-Generate a base answer (stubbed logic). Replace with your LLM call if desired.
-*/
-generateBaseAnswer(userMessage, lang) {
-const msg = normalizeWhitespace(userMessage || "");
-if (detectEmergency(msg)) {
-if (lang === "es") {
-return "Si no puede sentir las piernas o tiene una emergencia médica, llame al 911 o vaya a la sala de emergencias de inmediato. Luego, podemos hablar sobre cómo documentar y reportar la lesión.";
+.noack-title { font-weight: 600; font-size: 16px; }
+.noack-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  color: var(--muted);
 }
-return "If you’re experiencing a medical emergency, call 911 or go to the nearest emergency department immediately. Once you’re safe, we can discuss documenting and reporting the injury.";
+.noack-close:focus { outline: 3px solid rgba(11,87,208,0.35); }
+
+.noack-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  background: linear-gradient(180deg,#fafbfc 0%,#ffffff 35%);
 }
-const relevant = detectTopic(msg);
-if (relevant) {
-  if (lang === "es") {
-    return [
-      "Para presentar una reclamación de compensación laboral en Minnesota:",
-      "1) Informe la lesión a su empleador lo antes posible (idealmente dentro de 14 días).",
-      "2) Busque atención médica y diga que la lesión es laboral.",
-      "3) Guarde registros de fechas, síntomas, testigos y facturas.",
-      "4) Si la aseguradora niega o retrasa la reclamación, puede presentar una petición o consultar con un abogado.",
-      "5) Siga las indicaciones de su médico y su empleador; las omisiones pueden afectar sus beneficios.",
-    ].join("\n");
-  }
-  return [
-    "To file a Minnesota workers’ comp claim:",
-    "1) Report the injury to your employer as soon as possible (ideally within 14 days).",
-    "2) Seek medical care and tell the provider the injury is work-related.",
-    "3) Keep records of dates, symptoms, witnesses, and medical bills.",
-    "4) If the insurer denies or delays the claim, you can file a Claim Petition or consult an attorney.",
-    "5) Follow your doctor’s restrictions; noncompliance can affect benefits.",
-  ].join("\n");
+.noack-msg {
+  padding: 10px 12px;
+  margin: 8px 0;
+  max-width: 85%;
+  border-radius: 12px;
+  line-height: 1.35;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+.noack-msg.user {
+  background: #e7f0ff;
+  align-self: flex-end;
+  margin-left: auto;
+  border: 1px solid #c8dafd;
+}
+.noack-msg.assistant {
+  background: #f3f4f6;
+  border: 1px solid #e4e7eb;
 }
 
-// Non-legal/general fallback
-if (lang === "es") {
-  return "Puedo ayudar con preguntas generales o de compensación laboral. ¿Qué le gustaría saber?";
+.noack-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
 }
-return "I can help with general questions or workers’ compensation topics. What would you like to know?";
-}/**
-Handle a user message and return the assistant’s response with smart link behavior applied.
-@param {Object} input
-@param {string} input.userMessage
-@param {string} [input.conversationId="default"]
-@returns {Promise<{ text: string, triggered: boolean }>}
-*/
-async respond(input) {
-const { userMessage, conversationId = "default" } = input || {};
-const state = this.getState(conversationId);
-// Language: mirror user's language when possible
-let lang = detectLanguage(userMessage);
-if (lang !== "en" && lang !== "es") lang = "en";
-
-const baseAnswer = this.generateBaseAnswer(userMessage, lang);
-
-const { text, state: newState, triggered } = applyNoackSmartLink({
-  userMessage,
-  responseText: baseAnswer,
-  responseLanguage: lang,
-  conversationState: state,
-  config: this.config,
-});
-
-this.setState(conversationId, newState);
-return { text, triggered };
+.noack-input input[type="text"] {
+  flex: 1;
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 14px;
 }
-}export default NoackAssistant;example/cli.mjsimport { NoackAssistant } from "../src/assistant.js";
-import readline from "node:readline";const assistant = new NoackAssistant({
-mode: "topic_relevant_only",
-disclaimer: true,
-phraseVariation: "rotate",
-frequency: "once_per_conversation",
-url: "https://www.noacklawoffice.com/workers-compensation/",
-// spanishUrl: "https://www.noacklawoffice.com/es/compensacion-laboral",
-utm: { source: "assistant", medium: "cli", campaign: "workers_comp_link" },
-});const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-console.log("Noack Assistant CLI. Type your message. Ctrl+C to exit.");function ask() {
-rl.question("> ", async (line) => {
-const { text, triggered } = await assistant.respond({ userMessage: line, conversationId: "cli" });
-console.log("\n" + text + "\n");
-console.log((smart link ${triggered ? "added" : "not added"})\n);
-ask();
-});
-}ask();example/server.mjsimport http from "node:http";
-import { NoackAssistant } from "../src/assistant.js";const assistant = new NoackAssistant({
-mode: "topic_relevant_only",
-disclaimer: true,
-phraseVariation: "rotate",
-frequency: "once_per_conversation",
-url: "https://www.noacklawoffice.com/workers-compensation/",
-// spanishUrl: "https://www.noacklawoffice.com/es/compensacion-laboral",
-utm: { source: "assistant", medium: "api", campaign: "workers_comp_link" },
-});const server = http.createServer(async (req, res) => {
-if (req.method === "POST" && req.url === "/chat") {
-let body = "";
-req.on("data", (chunk) => (body += chunk));
-req.on("end", async () => {
-try {
-const data = JSON.parse(body || "{}");
-const conversationId = data.conversationId || "default";
-const message = data.message || "";    const { text, triggered } = await assistant.respond({
-      userMessage: message,
-      conversationId,
-    });
+.noack-input button {
+  padding: 10px 14px;
+  background: var(--primary);
+  color: var(--primary-contrast);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.noack-input button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    const response = {
-      conversationId,
-      text,
-      smartLinkAdded: triggered,
+.noack-modal.centered {
+  right: 50%;
+  bottom: 50%;
+  transform: translate(50%, 50%);
+}
+
+@media (max-width: 520px) {
+  .noack-modal { right: 12px; bottom: 80px; }
+  .noack-chat-button { right: 12px; bottom: 12px; }
+}
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <h1>Noack Law — Workers’ Compensation</h1>
+    <p>Get quick answers about reporting, benefits, and next steps after a work injury. The assistant can respond in English or Spanish.</p>
+    <a class="cta" href="https://www.noacklawoffice.com/workers-compensation/" target="_blank" rel="noopener">Visit Workers’ Comp page</a>
+  </section>  <!-- Floating Chat Button -->  <button class="noack-chat-button" id="noackChatButton" aria-label="Open chat">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true">
+      <path d="M20 2H4a2 2 0 0 0-2 2v14l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"></path>
+    </svg>
+  </button>  <!-- Overlay + Modal -->  <div class="noack-overlay" id="noackOverlay" aria-hidden="true"></div>  <section
+    class="noack-modal"
+    id="noackModal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="noackTitle"
+  >
+    <header class="noack-header">
+      <div class="noack-title" id="noackTitle">Noack Law Workers’ Comp Assistant</div>
+      <button class="noack-close" id="noackClose" aria-label="Close">✕</button>
+    </header>
+    <main class="noack-messages" id="noackMessages" aria-live="polite"></main>
+    <footer class="noack-input">
+      <input id="noackInput" type="text" placeholder="Type your question..." autocomplete="off" />
+      <button id="noackSend">Send</button>
+    </footer>
+  </section>  <script>
+    // =========================
+    // Config (demo-friendly defaults)
+    // =========================
+    const NOACK_CONFIG = {
+      mode: "topic_relevant_only",
+      disclaimer: true,
+      phraseVariation: "rotate",
+      frequency: "once_per_conversation",
+      url: "https://www.noacklawoffice.com/workers-compensation/",
+      spanishUrl: null, // e.g., "https://www.noacklawoffice.com/es/compensacion-laboral"
+      utm: { source: "assistant", medium: "lightbox", campaign: "workers_comp_link" },
+      ui: {
+        centeredLightbox: false,
+        autoOpenDelayMs: 1200,     // auto-open after 1.2s for team demo; set to null to disable
+        openOnExitIntent: false
+      },
+      backend: { useBackend: false, endpoint: "/chat" } // no LLM/backend for preview
     };
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(response));
-  } catch (e) {
-    res.writeHead(400, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Invalid request", details: String(e) }));
-  }
-});
-return;
-}res.writeHead(404, { "Content-Type": "application/json" });
-res.end(JSON.stringify({ error: "Not found" }));
-});const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-console.log(Noack Assistant HTTP server listening on http://localhost:${PORT});
-console.log("POST /chat with { conversationId, message }");
-});LICENSEMIT LicenseCopyright (c) 2025Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the “Software”), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+    // =========================
+    // Utilities
+    // =========================
+    function normalizeWhitespace(text) {
+      if (typeof text !== "string") return "";
+      return text.replace(/\s+$/g, "").replace(/\r\n/g, "\n");
+    }
+    function buildUrl(baseUrl, utm) {
+      if (!utm) return baseUrl;
+      if (typeof utm === "string") {
+        if (utm.startsWith("?") || utm.startsWith("&")) return baseUrl + utm;
+        return baseUrl.endsWith("/") ? baseUrl + utm : baseUrl + "/" + utm;
+      }
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(utm)) {
+        if (v != null && v !== "") params.set(\`utm_\${k}\`, v);
+      }
+      const sep = baseUrl.includes("?") ? "&" : "?";
+      return baseUrl + (params.toString() ? sep + params.toString() : "");
+    }
+    function detectLanguage(text) {
+      if (!text) return "unknown";
+      const t = text.toLowerCase();
+      const spanishHits = ["¿","¡","ó","á","é","í","ú","ñ","compensación","laboral","abogado","reclamación","beneficios","lesión","empleador","rehabilitación"]
+        .filter(s => t.includes(s)).length;
+      const englishHits = ["workers","compensation","workers’","workers'","work","injury","employer","attorney","lawyer","claim","benefits","minnesota"]
+        .filter(s => t.includes(s)).length;
+      if (spanishHits > englishHits && spanishHits >= 2) return "es";
+      if (englishHits >= spanishHits && englishHits >= 2) return "en";
+      if (/[a-z]/i.test(t) && !/[ñáéíóú¿¡]/i.test(t)) return "en";
+      return "unknown";
+    }
+    function detectTopic(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+      const patterns = [
+        /workers?\s*['’]?\s*comp(?:ensation)?/i,
+        /work(?:place)?\s+injur(?:y|ies)/i,
+        /\bclaim(?:s|)\b/i,
+        /\bbenefits?\b/i,
+        /\battorney\b|\blawyer\b|\binsurer\b/i,
+        /\bsettlement(?:s)?\b|\bhearing(?:s)?\b|\bfiling(?:s)?\b/i,
+        /\bdepartment of labor and industry\b|\bdli\b/i,
+        /compensación\s+laboral/i,
+        /\blesión(?:es)?\s+en\s+el\s+trabajo/i,
+        /\breclamación(?:es)?\b/i,
+        /\bbeneficio(?:s)?\b/i,
+        /\babogad(?:o|a|os|as)\b|\baseguradora(?:s)?\b/i,
+        /\bacuerdo(?:s)?\b|\baudiencia(?:s)?\b|\bpresentar\b/i
+      ];
+      return patterns.some(re => re.test(t));
+    }
+    function detectEmergency(text) {
+      if (!text) return false;
+      const t = text.toLowerCase();
+      const patterns = [
+        /can't\s+feel\s+my\s+legs|no\s+siento\s+las\s+piernas/i,
+        /severe\s+bleeding|hemorragia\s+severa/i,
+        /difficulty\s+breathing|short(ness)?\s+of\s+breath|dificultad\s+para\s+respirar/i,
+        /chest\s+pain|dolor\s+de\s+pecho/i,
+        /\bunconscious\b|inconsciente/i,
+        /\bstroke\b|derr(a|e)me\s+cerebral/i,
+        /\boverdose\b|sobredosis/i,
+        /\bcall\s+911\b|llame\s+al\s*911/i,
+        /\bemergency\s+room\b|\bgo\s+to\s+the\s+er\b/i
+      ];
+      return patterns.some(re => re.test(t));
+    }
+    function pickPhraseIndex(showCount, total) {
+      if (!Number.isInteger(showCount) || showCount < 0) return 0;
+      if (!Number.isInteger(total) || total <= 0) return 0;
+      return showCount % total;
+    }
+
+    // =========================
+    // Smart link behavior
+    // =========================
+    const EN_DISCLAIMER = "Note: This information is general and not legal advice. It does not create an attorney–client relationship.";
+    const ES_DISCLAIMER = "Aviso: Esta información es general y no constituye asesoramiento legal. No crea una relación abogado–cliente.";
+    const EN_PHRASES = [
+      url => \`For more information, visit Noack Law Office’s Workers’ Compensation page: \${url}\`,
+      url => \`Learn more here: \${url}\`,
+      url => \`You can find additional details at Noack Law Office: \${url}\`,
+    ];
+    const ES_PHRASES = [
+      url => \`Para más información, visite la página de Compensación Laboral de Noack Law Office: \${url}\`,
+      url => \`Obtenga más información aquí: \${url}\`,
+      url => \`Puede encontrar más detalles en Noack Law Office: \${url}\`,
+    ];
+
+    function applyNoackSmartLink({ userMessage, responseText, responseLanguage, state, config }) {
+      const cfg = { ...NOACK_CONFIG, ...config };
+      const s = state || { linkShown: false, showCount: 0 };
+      const safeResponse = normalizeWhitespace(responseText || "");
+      const safeUser = normalizeWhitespace(userMessage || "");
+      if (!safeResponse) return { text: "", state: s, triggered: false, reason: "empty" };
+      if (detectEmergency(safeUser)) return { text: safeResponse, state: s, triggered: false, reason: "emergency" };
+
+      let lang = responseLanguage || detectLanguage(safeResponse);
+      if (lang !== "en" && lang !== "es") return { text: safeResponse, state: s, triggered: false, reason: "lang_unsupported" };
+
+      let isRelevant = true;
+      if (cfg.mode === "topic_relevant_only") isRelevant = detectTopic(\`\${safeUser}\n\${safeResponse}\`);
+      if (!isRelevant) return { text: safeResponse, state: s, triggered: false, reason: "not_relevant" };
+
+      if (cfg.frequency === "once_per_conversation" && s.linkShown) {
+        return { text: safeResponse, state: s, triggered: false, reason: "already_shown" };
+      }
+
+      const baseUrl = lang === "es" && cfg.spanishUrl ? cfg.spanishUrl : cfg.url;
+      const effectiveUrl = buildUrl(baseUrl, cfg.utm);
+      if (safeResponse.includes(effectiveUrl)) {
+        s.linkShown = true;
+        return { text: safeResponse, state: s, triggered: false, reason: "url_present" };
+      }
+
+      const phrases = lang === "en" ? EN_PHRASES : ES_PHRASES;
+      const idx = cfg.phraseVariation === "rotate" ? pickPhraseIndex(s.showCount, phrases.length) : 0;
+      const linkLine = phrases[idx](effectiveUrl);
+      const disclaimer = cfg.disclaimer ? (lang === "en" ? EN_DISCLAIMER : ES_DISCLAIMER) : null;
+
+      const final = safeResponse + "\\n\\n" + (disclaimer ? disclaimer + "\\n" : "") + linkLine;
+      s.linkShown = true;
+      s.showCount += 1;
+
+      return { text: final, state: s, triggered: true };
+    }
+
+    // =========================
+    // Assistant logic (customize this content to match your landing page)
+    // =========================
+    function generateBaseAnswer(userMessage, lang) {
+      const msg = normalizeWhitespace(userMessage || "");
+      if (detectEmergency(msg)) {
+        if (lang === "es") {
+          return "Si no puede sentir las piernas o tiene una emergencia médica, llame al 911 o vaya a la sala de emergencias de inmediato. Luego, podemos hablar sobre cómo documentar y reportar la lesión.";
+        }
+        return "If you’re experiencing a medical emergency, call 911 or go to the nearest emergency department immediately. Once you’re safe, we can discuss documenting and reporting the injury.";
+      }
+
+      const relevant = detectTopic(msg);
+      if (relevant) {
+        if (lang === "es") {
+          return [
+            "Pasos iniciales después de una lesión laboral en Minnesota:",
+            "1) Informe la lesión a su empleador lo antes posible (idealmente dentro de 14 días).",
+            "2) Busque atención médica y mencione que la lesión es laboral.",
+            "3) Guarde registros de fechas, síntomas, testigos y facturas.",
+            "4) Si la aseguradora niega o retrasa la reclamación, puede presentar una petición o consultar con un abogado.",
+            "5) Siga las restricciones médicas; el incumplimiento puede afectar los beneficios.",
+          ].join("\\n");
+        }
+        return [
+          "First steps after a Minnesota work injury:",
+          "1) Report the injury to your employer as soon as possible (ideally within 14 days).",
+          "2) Seek medical care and tell the provider the injury is work-related.",
+          "3) Keep records of dates, symptoms, witnesses, and medical bills.",
+          "4) If the insurer denies or delays the claim, you can file a Claim Petition or consult an attorney.",
+          "5) Follow your doctor’s restrictions; noncompliance can affect benefits.",
+        ].join("\\n");
+      }
+
+      // General/fallback response (keep brief and aligned to the landing page)
+      if (lang === "es") {
+        return "Puedo ayudar con preguntas sobre compensación laboral en Minnesota: reportes, beneficios y próximos pasos. ¿Qué le gustaría saber?";
+      }
+      return "I can help with Minnesota workers’ comp questions: reporting, benefits, and next steps. What would you like to know?";
+    }
+
+    // =========================
+    // UI and interaction
+    // =========================
+    const elBtn = document.getElementById("noackChatButton");
+    const elOverlay = document.getElementById("noackOverlay");
+    const elModal = document.getElementById("noackModal");
+    const elMessages = document.getElementById("noackMessages");
+    const elInput = document.getElementById("noackInput");
+    const elSend = document.getElementById("noackSend");
+    const elClose = document.getElementById("noackClose");
+
+    if (NOACK_CONFIG.ui.centeredLightbox) elModal.classList.add("centered");
+
+    const convoState = { linkShown: false, showCount: 0 };
+    const conversationId = "landing-" + Math.random().toString(36).slice(2, 8);
+
+    function openChat() {
+      elOverlay.classList.add("open");
+      elModal.classList.add("open");
+      elOverlay.setAttribute("aria-hidden", "false");
+      setTimeout(() => { elInput?.focus(); }, 100);
+    }
+    function closeChat() {
+      elOverlay.classList.remove("open");
+      elModal.classList.remove("open");
+      elOverlay.setAttribute("aria-hidden", "true");
+      elBtn?.focus();
+    }
+
+    elBtn.addEventListener("click", openChat);
+    elClose.addEventListener("click", closeChat);
+    elOverlay.addEventListener("click", (e) => { if (e.target === elOverlay) closeChat(); });
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape" && elModal.classList.contains("open")) closeChat(); });
+
+    function addMessage(role, text) {
+      const div = document.createElement("div");
+      div.className = "noack-msg " + role;
+      div.textContent = text;
+      elMessages.appendChild(div);
+      elMessages.scrollTop = elMessages.scrollHeight;
+    }
+
+    async function handleSend() {
+      const val = (elInput.value || "").trim();
+      if (!val) return;
+      elInput.value = "";
+      addMessage("user", val);
+
+      let lang = detectLanguage(val);
+      if (lang !== "en" && lang !== "es") lang = "en";
+
+      // No backend call in preview
+      const base = generateBaseAnswer(val, lang);
+
+      const { text } = applyNoackSmartLink({
+        userMessage: val,
+        responseText: base,
+        responseLanguage: lang,
+        state: convoState,
+        config: NOACK_CONFIG,
+      });
+
+      addMessage("assistant", text);
+    }
+
+    elSend.addEventListener("click", handleSend);
+    elInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    });
+
+    // Auto-open for demo
+    if (Number.isInteger(NOACK_CONFIG.ui.autoOpenDelayMs) && NOACK_CONFIG.ui.autoOpenDelayMs > 0) {
+      setTimeout(() => { openChat(); }, NOACK_CONFIG.ui.autoOpenDelayMs);
+    }
+    if (NOACK_CONFIG.ui.openOnExitIntent) {
+      let armed = true;
+      document.addEventListener("mouseleave", (e) => {
+        if (!armed) return;
+        if (e.clientY <= 0) { openChat(); armed = false; }
+      });
+    }
+  </script></body>
+</html>
