@@ -1,176 +1,270 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html><html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Noack Assistant — Minimal Preview</title>
+  <meta charset="utf-8" />
+  <title>Asistente de Noack Law</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --primary:#0b57d0; --bg:#fff; --text:#1f2328; --muted:#5f6b7a; --border:#d9dee3; --shadow:0 10px 30px rgba(0,0,0,.16); --radius:12px; }
+    :root {
+      /* THEME - From noacklawoffice.com */
+      --navy: #000000;             /* Black from logo */
+      --primary: #9a1a23;          /* Dark Red from CTA */
+      --primary-dark: #7a151c;
+      --gold: #b59c73;             /* Gold/Tan accent */
+      --bg: #ffffff;
+      --page-bg: #f2efe8;         /* Cream page background */
+      --text: #333333;
+      --muted: #555555;
+      --border: #e0e0e0;
+      --answer-bg: #fdfdfd;
+    }
     * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--text); }
-    .hero { padding: 40px 20px 80px; max-width: 900px; margin: 0 auto; }
-    .hero h1 { margin: 0 0 10px; font-size: 32px; }
-    .hero p { margin: 0 0 20px; color: var(--muted); }
-    .open-btn { position: fixed; top: 14px; right: 14px; background: var(--primary); color: #fff; border: 0; border-radius: 8px; padding: 10px 12px; cursor: pointer; box-shadow: var(--shadow); }/* Lightbox */
-.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; }
-.overlay.open { display: block; }
-.modal { position: fixed; right: 20px; bottom: 20px; width: min(420px, calc(100vw - 32px)); height: min(70vh, 620px); background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; display: none; }
-.modal.open { display: flex; flex-direction: column; }
-.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border); background: #f6f7f9; }
-.title { font-weight: 600; }
-.close { background: transparent; border: 0; cursor: pointer; font-size: 18px; color: var(--muted); }
-.messages { flex: 1; overflow-y: auto; padding: 12px; background: linear-gradient(180deg,#fafbfc 0%,#ffffff 35%); }
-.msg { padding: 10px 12px; margin: 8px 0; max-width: 85%; border-radius: 12px; line-height: 1.35; white-space: pre-wrap; word-wrap: break-word; border: 1px solid var(--border); }
-.msg.user { background: #e8f0fe; margin-left: auto; }
-.msg.assistant { background: #f3f4f6; }
-.input { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); }
-.input input { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
-.input button { background: var(--primary); color: #fff; border: 0; border-radius: 8px; padding: 10px 12px; cursor: pointer; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--page-bg);
+      color: var(--text);
+      font-family: 'Georgia', 'Times New Roman', Times, serif;
+    }
+    .wrap { max-width: 420px; margin: 0 auto; padding: 14px; }.widget {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+  padding: 12px 16px 16px 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.titlebar {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--navy);
+  display: grid; place-items: center;
+  color: #fff; font-weight: bold; font-size: 18px;
+}
+.title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--navy);
+}
+
+.answer-box {
+  background: var(--answer-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  min-height: 200px;
+  max-height: 280px;
+  overflow: auto;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.answer-box.suggestions-mode {
+  padding-top: 6px;
+}
+.answer-box.empty { color: var(--muted); }
+
+.suggestions h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--navy); font-weight: bold; }
+.suggestions ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.suggestions li {
+  background: var(--gold);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.suggestions li:hover { background: var(--primary); }
+
+form { display: grid; gap: 8px; }
+.input-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: stretch;
+}
+textarea {
+  resize: none;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 16px;
+  font-family: inherit;
+  line-height: 1.4;
+}
+textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(181, 156, 115, 0.2); outline: none; }
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+#submit-btn { background: var(--primary); color: #fff; min-width: 100px; }
+#submit-btn:hover { background: var(--primary-dark); }
+#submit-btn:disabled { opacity: .65; cursor: not-allowed; }
+
+#clear-btn {
+  min-width: 80px;
+  background: #f0f0f0;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+#clear-btn:hover { background: #e5e5e5; }
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  display: grid;
+  gap: 14px;
+}
+.firm-name {
+  font-weight: 900;
+  color: var(--navy);
+  font-size: 18px;
+}
+.select{
+  width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; font-weight:bold; color:#333; font-family:inherit; font-size: 15px;
+}
+.call-btn {
+  display: block;
+  text-align: center;
+  background: var(--navy);
+  color: #fff;
+  padding: 12px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 15px;
+}
+.call-btn:hover { background: #222; }
+.wc-btn {
+  display: block;
+  text-align: center;
+  background: var(--primary);
+  color: #fff;
+  padding: 12px 14px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 15px;
+}
+.wc-btn:hover { background: var(--primary-dark); }
+.contact {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+  font-size: 15px;
+}
+.contact a { color: var(--primary); text-decoration: none; font-weight: bold; }
+.contact a:hover { text-decoration: underline; }
+
+.disclaimer { font-size: 12px; color: var(--muted); line-height: 1.4; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   </style>
 </head>
 <body>
-  <section class="hero">
-    <h1>Noack Law — Workers’ Compensation</h1>
-    <p>Click “Open Assistant” to chat. It answers from built‑in copy (no external data). It adds the Noack Workers’ Comp link only when relevant, once per conversation, and matches English/Spanish.</p>
-    <button class="open-btn" id="openBtn">Open Assistant</button>
-  </section>  <div class="overlay" id="overlay" aria-hidden="true"></div>
-  <section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="title">
-    <header class="header">
-      <div class="title" id="title">Noack Assistant</div>
-      <button class="close" id="closeBtn" aria-label="Close">✕</button>
-    </header>
-    <main class="messages" id="messages" aria-live="polite"></main>
-    <footer class="input">
-      <input id="input" type="text" placeholder="Type your question..." autocomplete="off" />
-      <button id="sendBtn">Send</button>
-    </footer>
-  </section>  <script>
-    // Minimal utilities
-    function norm(t){return typeof t==="string"?t.replace(/\s+$/g,"").replace(/\r\n/g,"\n"):""}
-    function detectLanguage(text){
-      if(!text) return "en";
-      const t=text.toLowerCase();
-      const esHits=["¿","¡","ó","á","é","í","ú","ñ","compensación","laboral","abogado","reclamación","beneficios","lesión"].filter(s=>t.includes(s)).length;
-      const enHits=["workers","compensation","workers’","workers'","work","injury","employer","attorney","claim","benefits"].filter(s=>t.includes(s)).length;
-      if(esHits>enHits && esHits>=2) return "es";
-      if(enHits>=esHits && enHits>=2) return "en";
-      if(/[a-z]/i.test(t) && !/[ñáéíóú¿¡]/i.test(t)) return "en";
-      return "en";
-    }
-    function detectTopic(text){
-      if(!text) return false;
-      const t=text.toLowerCase();
-      const pats=[/workers?\s*['’]?\s*comp/i,/work(?:place)?\s+injur/i,/\bclaim(?:s|)\b/i,/\bbenefits?\b/i,/\battorney\b|\blawyer\b|\binsurer\b/i,/compensación\s+laboral/i,/\blesión(?:es)?\s+en\s+el\s+trabajo/i,/\breclamación(?:es)?\b/i];
-      return pats.some(re=>re.test(t));
-    }
-    function detectEmergency(text){
-      if(!text) return false;
-      const t=text.toLowerCase();
-      const pats=[/can't\s+feel\s+my\s+legs|no\s+siento\s+las\s+piernas/i,/difficulty\s+breathing|dificultad\s+para\s+respirar/i,/severe\s+bleeding|hemorragia\s+severa/i,/chest\s+pain|dolor\s+de\s+pecho/i];
-      return pats.some(re=>re.test(t));
-    }
+  <div class="wrap">
+    <div class="widget" role="application" aria-labelledby="assistant-title">
+      <div class="titlebar">
+        <div class="avatar" aria-hidden="true">NL</div>
+        <h1 id="assistant-title" class="title">Asistente de Noack Law</h1>
+      </div>  <div id="answer" class="answer-box suggestions-mode empty" aria-live="polite"></div>
 
-    // Smart link (topic-relevant, language-matched, once-per-convo)
-    const LINK_URL = "https://www.noacklawoffice.com/workers-compensation/";
-    const EN_DISCLAIMER = "Note: This information is general and not legal advice. It does not create an attorney–client relationship.";
-    const ES_DISCLAIMER = "Aviso: Esta información es general y no constituye asesoramiento legal. No crea una relación abogado–cliente.";
-    const EN_PHRASES = [
-      u=>`For more information, visit Noack Law Office’s Workers’ Compensation page: ${u}`,
-      u=>`Learn more here: ${u}`,
-      u=>`You can find additional details at Noack Law Office: ${u}`
-    ];
-    const ES_PHRASES = [
-      u=>`Para más información, visite la página de Compensación Laboral de Noack Law Office: ${u}`,
-      u=>`Obtenga más información aquí: ${u}`,
-      u=>`Puede encontrar más detalles en Noack Law Office: ${u}`
-    ];
-    const convoState = { linkShown:false, showCount:0 };
+  <form id="ask-form">
+    <label class="sr-only" for="question">Su pregunta</label>
+    <div class="input-row">
+      <textarea id="question" name="question" placeholder="Escriba su pregunta…" required></textarea>
+      <button id="submit-btn" type="submit" aria-label="Enviar pregunta">Preguntar</button>
+      <button id="clear-btn" type="button" aria-label="Borrar pregunta">Borrar</button>
+    </div>
+  </form>
 
-    function applySmartLink({ userMessage, responseText, lang }){
-      const safeUser = norm(userMessage||"");
-      const safeResp = norm(responseText||"");
-      if(!safeResp) return safeResp;
-      if(detectEmergency(safeUser)) return safeResp;
+  <div class="footer">
+    <div id="firm-name" class="firm-name">Noack Law Office</div>
+    <select id="locationSelect" class="select" aria-label="Seleccionar oficina"></select>
+    <a id="call-btn" class="call-btn" href="#">Llamar</a>
+    <a id="wc-btn" class="wc-btn" href="#" target="_blank" rel="noopener">Página de Compensación Laboral</a>
+    <div class="contact" aria-label="Información de contacto">
+      <div><strong>Oficina:</strong> <span id="office-address"></span></div>
+      <div><strong>Formulario de contacto:</strong> <a id="contact-form-link" href="#" target="_blank" rel="noopener">Abrir formulario</a></div>
+    </div>
+    <div class="disclaimer">Información general únicamente—no es asesoramiento legal. El uso de este asistente no crea una relación abogado–cliente.</div>
+  </div>
+</div>
+  </div>  <script>
+    // ======================
+    // Config — Pre-filled with your data
+    // ======================
+    const CONFIG = {
+      firmName: "Noack Law Office",
+      workersCompUrl: "https://www.noacklawoffice.com/areas-de-practica/compensacion-para-trabajadores/",
 
-      const relevant = detectTopic(`${safeUser}\n${safeResp}`);
-      if(!relevant) return safeResp;
-      if(convoState.linkShown) return safeResp;
+      locations: [
+        { id: "excelsior", name: "Oficina de Excelsior", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "350 Highway 7, Suite 210, Excelsior, MN 55331", contactFormUrl: "https://www.noacklawoffice.com/lp/workers-compensation-minnesota-ppc_lp/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:en&hbx_pk={keyword}#contactform" },
+        { id: "minneapolis", name: "Oficina de Minneapolis", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "1515 East Lake Street, Suite 200, Minneapolis, MN 55407", contactFormUrl: "https://www.noacklawoffice.com/lp/workers-compensation-minnesota-ppc_lp/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:en&hbx_pk={keyword}#contactform" },
+        { id: "stpaul", name: "Oficina de St. Paul", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "925 Payne Avenue, Suite 201, St. Paul, MN 55130", contactFormUrl: "https://www.noacklawoffice.com/lp/workers-compensation-minnesota-ppc_lp/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:en&hbx_pk={keyword}#contactform" }
+      ],
+      defaultLocationId: "excelsior"
+    };
 
-      const phrases = lang==="es" ? ES_PHRASES : EN_PHRASES;
-      const disclaimer = lang==="es" ? ES_DISCLAIMER : EN_DISCLAIMER;
-      const idx = convoState.showCount % phrases.length;
-      const final = safeResp + "\n\n" + disclaimer + "\n" + phrases[idx](LINK_URL);
+    // Questions from your Spanish FAQ
+    const SUGG_ES = ["¿Qué es la compensación por accidente laboral?", "¿Cuánto tiempo tengo para presentar una reclamación?", "¿Qué debo hacer si mi reclamación fue denegada?", "¿Qué factores afectan el valor de un reclamo?"];
+    const SUGG_EN = ["What is workers' compensation?", "How long do I have to file a claim?", "What if my claim was denied?", "What factors affect a claim's value?"];
 
-      convoState.linkShown = true;
-      convoState.showCount++;
-      return final;
-    }
+    // ======================
+    // Utilities & Smart Link
+    // ======================
+    const convoState = { linkShown: false, showCount: 0 };
+    function norm(t){return typeof t==="string"?t.replace(/\s+$/g,""):""}
+    function detectLanguage(t){if(!t)return"es";const e=t.toLowerCase(),n=["¿","¡","ó","á","é","í","ú","ñ","compensación","laboral","abogado","reclamación","beneficios","lesión"].filter(s=>e.includes(s)).length,i=["workers","compensation","claim","benefits","attorney","injury"].filter(s=>e.includes(s)).length;if(n>i&&n>=2)return"es";if(i>=n&&i>=2)return"en";if(/[a-z]/i.test(e)&&!/[ñáéíóú¿¡]/i.test(e))return"en";return"es"}
+    function detectTopic(t){if(!t)return!1;const e=t.toLowerCase(),n=[/workers?\s*['’]?\s*comp/i,/work(?:place)?\s+injur/i,/\bclaim/i,/\bbenefit/i,/\battorney/i,/compensación\s+laboral/i,/\blesión/i,/\breclamación/i];return n.some(c=>c.test(e))}
+    function applySmartLink({userMessage:u,responseText:r,lang:l}){const s=norm(u||""),t=norm(r||"");if(!t||t.includes("emergencia médica"))return t;const n=detectTopic(`${s}\n${t}`);if(!n||convoState.linkShown)return t;const o=l==="es"?`Para más información, visite nuestra página de Compensación Laboral: ${CONFIG.workersCompUrl}`:`For more information, visit our Workers’ Compensation page: ${CONFIG.workersCompUrl}`;const c=l==="es"?"Aviso: Esta información es general y no constituye asesoramiento legal.":"Note: This information is general and not legal advice.";const i=t+"\n\n"+c+"\n"+o;return convoState.linkShown=!0,convoState.showCount++,i}
 
-    // Simple built-in answers (no external data/LLM)
-    function generateAnswer(userMessage, lang){
-      const msg = norm(userMessage||"");
-      if(detectEmergency(msg)){
-        return lang==="es"
-          ? "Si tiene una emergencia médica, llame al 911 o vaya a la sala de emergencias de inmediato. Luego, podemos hablar sobre cómo documentar y reportar la lesión."
-          : "If you’re experiencing a medical emergency, call 911 or go to the nearest emergency department immediately. Once you’re safe, we can discuss documenting and reporting the injury.";
-      }
-      if(detectTopic(msg)){
-        return lang==="es"
-          ? [
-              "Pasos iniciales después de una lesión laboral en Minnesota:",
-              "1) Informe la lesión a su empleador lo antes posible (idealmente dentro de 14 días).",
-              "2) Busque atención médica y mencione que la lesión es laboral.",
-              "3) Guarde registros de fechas, síntomas, testigos y facturas.",
-              "4) Si la aseguradora niega o retrasa la reclamación, puede presentar una petición o consultar con un abogado."
-            ].join("\n")
-          : [
-              "First steps after a Minnesota work injury:",
-              "1) Report the injury to your employer as soon as possible (ideally within 14 days).",
-              "2) Seek medical care and tell the provider the injury is work-related.",
-              "3) Keep records of dates, symptoms, witnesses, and medical bills.",
-              "4) If the insurer denies or delays the claim, you can file a Claim Petition or consult an attorney."
-            ].join("\n");
-      }
-      return lang==="es"
-        ? "Puedo ayudar con preguntas sobre compensación laboral en Minnesota: reportes, beneficios y próximos pasos. ¿Qué le gustaría saber?"
-        : "I can help with Minnesota workers’ comp questions: reporting, benefits, and next steps. What would you like to know?";
-    }
+    // ======================
+    // Built-in content from your Spanish page
+    // ======================
+    function answerES(msg){const m=norm(msg).toLowerCase();if(/emergencia/.test(m))return"Si está experimentando una emergencia médica, llame al 911 o vaya a la sala de emergencias de inmediato. Una vez que esté a salvo, podemos discutir su caso.";if(/denegada|rechazada|denied|rejected/.test(m))return"Muchas reclamaciones iniciales son rechazadas. Si eso le sucedió, es importante saber que aún puede recibir beneficios. Nuestros abogados tienen más de 80 años de experiencia combinada y podemos ayudarle a apelar esas reclamaciones para recibir los beneficios que merecen.";if(/tiempo|cuánto|how long|días|days/.test(m))return"En Minnesota, debe informar a su empleador sobre su lesión lo antes posible. Informar dentro de los primeros 14 días es lo más seguro, pero puede informar hasta 30 días después del accidente. Generalmente tiene hasta tres años desde la fecha de la lesión para presentar formalmente una reclamación.";if(/qué es|what is|cómo funciona/.test(m))return"La compensación por accidente laboral es un seguro que los empleadores adquieren. Si un empleado sufre una lesión en el trabajo, el seguro puede cubrir el reclamo del trabajador. Solo necesita demostrar que su lesión ocurrió como resultado directo de sus deberes laborales.";if(/valor|cuánto vale|value/.test(m))return"El valor de su reclamo depende de varios factores, incluyendo: su salario semanal promedio (AWW), los costos de sus tratamientos médicos, si su lesión resulta en una discapacidad permanente, y los costos de rehabilitación vocacional si no puede regresar a su trabajo anterior.";return"Puedo ayudar con preguntas sobre la compensación por accidente laboral en Minnesota: cómo presentar un reclamo, qué beneficios puede recibir y qué hacer si su reclamo es denegado. ¿En qué puedo ayudarle hoy?"}
+    function answerEN(msg){if(/emergency/.test(norm(msg).toLowerCase()))return"If you are having a medical emergency, please call 911. We can discuss your claim after you are safe.";return"I can answer questions about Minnesota workers' compensation. For specific legal advice, please contact our office directly. How can I help you today?"}
 
-    // UI
-    const overlay = document.getElementById("overlay");
-    const modal = document.getElementById("modal");
-    const messages = document.getElementById("messages");
-    const input = document.getElementById("input");
-    const openBtn = document.getElementById("openBtn");
-    const closeBtn = document.getElementById("closeBtn");
-    const sendBtn = document.getElementById("sendBtn");
+    // ======================
+    // UI Logic
+    // ======================
+    const els={answer:document.getElementById("answer"),question:document.getElementById("question"),askForm:document.getElementById("ask-form"),submitBtn:document.getElementById("submit-btn"),clearBtn:document.getElementById("clear-btn"),firmName:document.getElementById("firm-name"),locationSelect:document.getElementById("locationSelect"),callBtn:document.getElementById("call-btn"),wcBtn:document.getElementById("wc-btn"),officeAddress:document.getElementById("office-address"),contactFormLink:document.getElementById("contact-form-link")};
+    const locMap=new Map(CONFIG.locations.map(l=>[l.id,l]));
 
-    function openChat(){ overlay.classList.add("open"); modal.classList.add("open"); overlay.setAttribute("aria-hidden","false"); setTimeout(()=>input.focus(),100); }
-    function closeChat(){ overlay.classList.remove("open"); modal.classList.remove("open"); overlay.setAttribute("aria-hidden","true"); }
+    function setLocation(id){const l=locMap.get(id);if(!l)return;els.callBtn.href=l.phoneHref;els.callBtn.textContent=`Llamar ${l.phone}`;els.officeAddress.textContent=l.address;els.contactFormLink.href=l.contactFormUrl}
+    function renderSuggestions(lang="es"){const s=lang==="es"?SUGG_ES:SUGG_EN;const t=lang==="es"?"Preguntas sugeridas":"Suggested questions";els.answer.classList.add("empty","suggestions-mode");els.answer.innerHTML=`<div class="suggestions"><h3>${t}</h3><ul>${s.map(q=>`<li data-q="$${q.replace(/"/g,"&quot;")}">$${q}</li>`).join("")}</ul></div>`;els.answer.querySelectorAll("li").forEach(l=>{l.addEventListener("click",()=>{els.question.value=l.getAttribute("data-q");els.askForm.requestSubmit()})})}
+    function showAnswer(t){els.answer.classList.remove("empty","suggestions-mode");els.answer.textContent=t}
 
-    openBtn.addEventListener("click", openChat);
-    closeBtn.addEventListener("click", closeChat);
-    overlay.addEventListener("click", (e)=>{ if(e.target===overlay) closeChat(); });
-    window.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && modal.classList.contains("open")) closeChat(); });
+    els.askForm.addEventListener("submit",async e=>{e.preventDefault();const q=els.question.value.trim();if(!q)return;els.submitBtn.disabled=!0;showAnswer(detectLanguage(q)==="es"?"Pensando...":"Thinking...");await new Promise(r=>setTimeout(r,300));const l=detectLanguage(q);const b=l==="es"?answerES(q):answerEN(q);const f=applySmartLink({userMessage:q,responseText:b,lang:l});showAnswer(f);els.submitBtn.disabled=!1;els.question.focus();els.question.select()});
+    els.clearBtn.addEventListener("click",()=>{els.question.value="";convoState.linkShown=!1;renderSuggestions(detectLanguage(els.question.value));els.question.focus()});
 
-    function addMsg(role,text){ const d=document.createElement("div"); d.className="msg "+role; d.textContent=text; messages.appendChild(d); messages.scrollTop=messages.scrollHeight; }
-
-    function handleSend(){
-      const val = (input.value||"").trim();
-      if(!val) return;
-      input.value = "";
-      addMsg("user", val);
-
-      let lang = detectLanguage(val);
-      if(lang!=="en" && lang!=="es") lang = "en";
-
-      const base = generateAnswer(val, lang);
-      const final = applySmartLink({ userMessage: val, responseText: base, lang });
-      addMsg("assistant", final);
-    }
-    sendBtn.addEventListener("click", handleSend);
-    input.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); handleSend(); } });
-
-    // Auto-open so you immediately see it
-    window.addEventListener("load", () => setTimeout(openChat, 600));
+    // Init
+    els.firmName.textContent=CONFIG.firmName;els.wcBtn.href=CONFIG.workersCompUrl;
+    CONFIG.locations.forEach(l=>{const o=document.createElement("option");o.value=l.id;o.textContent=l.name;els.locationSelect.appendChild(o)});
+    els.locationSelect.value=CONFIG.defaultLocationId;setLocation(CONFIG.defaultLocationId);
+    els.locationSelect.addEventListener("change",e=>setLocation(e.target.value));
+    renderSuggestions("es");
   </script></body>
 </html>
