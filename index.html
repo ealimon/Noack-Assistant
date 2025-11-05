@@ -155,18 +155,7 @@ button {
   font-size: 15px;
 }
 .call-btn:hover { background: #222; }
-.wc-btn {
-  display: block;
-  text-align: center;
-  background: var(--primary);
-  color: #fff;
-  padding: 12px 14px;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: bold;
-  font-size: 15px;
-}
-.wc-btn:hover { background: var(--primary-dark); }
+
 .contact {
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -204,7 +193,6 @@ button {
     <div id="firm-name" class="firm-name">Noack Law Office</div>
     <select id="locationSelect" class="select" aria-label="Seleccionar oficina"></select>
     <a id="call-btn" class="call-btn" href="#">Llamar</a>
-    <a id="wc-btn" class="wc-btn" href="#" target="_blank" rel="noopener">Página de Compensación Laboral</a>
     <div class="contact" aria-label="Información de contacto">
       <div><strong>Oficina:</strong> <span id="office-address"></span></div>
       <div><strong>Formulario de contacto:</strong> <a id="contact-form-link" href="#" target="_blank" rel="noopener">Abrir formulario</a></div>
@@ -221,9 +209,9 @@ button {
       workersCompUrl: "https://www.noacklawoffice.com/areas-de-practica/compensacion-para-trabajadores/",
 
       locations: [
-        { id: "excelsior", name: "Oficina de Excelsior", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "350 Highway 7, Suite 210, Excelsior, MN 55331", contactFormUrl: "https://www.noacklawoffice.com/lp/workers-compensation-minnesota-ppc_lp/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:en&hbx_pk={keyword}#contactform" },
-        { id: "minneapolis", name: "Oficina de Minneapolis", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "1515 East Lake Street, Suite 200, Minneapolis, MN 55407", contactFormUrl: "https://www.noacklawoffice.com/lp/workers-compensation-minnesota-ppc_lp/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:en&hbx_pk={keyword}#contactform" },
-        { id: "stpaul", name: "Oficina de St. Paul", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "925 Payne Avenue, Suite 201, St. Paul, MN 55130", contactFormUrl: "https://www.noacklawoffice.com/lp/workers-compensation-minnesota-ppc_lp/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:en&hbx_pk={keyword}#contactform" }
+        { id: "excelsior", name: "Oficina de Excelsior", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "350 Highway 7, Suite 210, Excelsior, MN 55331", contactFormUrl: "https://www.noacklawoffice.com/lp/abogado-de-compensacion-laboral/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:es&hbx_pk={keyword}#contactform" },
+        { id: "minneapolis", name: "Oficina de Minneapolis", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "1515 East Lake Street, Suite 200, Minneapolis, MN 55407", contactFormUrl: "https://www.noacklawoffice.com/lp/abogado-de-compensacion-laboral/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:es&hbx_pk={keyword}#contactform" },
+        { id: "stpaul", name: "Oficina de St. Paul", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "925 Payne Avenue, Suite 201, St. Paul, MN 55130", contactFormUrl: "https://www.noacklawoffice.com/lp/abogado-de-compensacion-laboral/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:es&hbx_pk={keyword}#contactform" }
       ],
       defaultLocationId: "excelsior"
     };
@@ -250,7 +238,7 @@ button {
     // ======================
     // UI Logic
     // ======================
-    const els={answer:document.getElementById("answer"),question:document.getElementById("question"),askForm:document.getElementById("ask-form"),submitBtn:document.getElementById("submit-btn"),clearBtn:document.getElementById("clear-btn"),firmName:document.getElementById("firm-name"),locationSelect:document.getElementById("locationSelect"),callBtn:document.getElementById("call-btn"),wcBtn:document.getElementById("wc-btn"),officeAddress:document.getElementById("office-address"),contactFormLink:document.getElementById("contact-form-link")};
+    const els={answer:document.getElementById("answer"),question:document.getElementById("question"),askForm:document.getElementById("ask-form"),submitBtn:document.getElementById("submit-btn"),clearBtn:document.getElementById("clear-btn"),firmName:document.getElementById("firm-name"),locationSelect:document.getElementById("locationSelect"),callBtn:document.getElementById("call-btn"),officeAddress:document.getElementById("office-address"),contactFormLink:document.getElementById("contact-form-link")};
     const locMap=new Map(CONFIG.locations.map(l=>[l.id,l]));
 
     function setLocation(id){const l=locMap.get(id);if(!l)return;els.callBtn.href=l.phoneHref;els.callBtn.textContent=`Llamar ${l.phone}`;els.officeAddress.textContent=l.address;els.contactFormLink.href=l.contactFormUrl}
@@ -261,7 +249,7 @@ button {
     els.clearBtn.addEventListener("click",()=>{els.question.value="";convoState.linkShown=!1;renderSuggestions(detectLanguage(els.question.value));els.question.focus()});
 
     // Init
-    els.firmName.textContent=CONFIG.firmName;els.wcBtn.href=CONFIG.workersCompUrl;
+    els.firmName.textContent=CONFIG.firmName;
     CONFIG.locations.forEach(l=>{const o=document.createElement("option");o.value=l.id;o.textContent=l.name;els.locationSelect.appendChild(o)});
     els.locationSelect.value=CONFIG.defaultLocationId;setLocation(CONFIG.defaultLocationId);
     els.locationSelect.addEventListener("change",e=>setLocation(e.target.value));
