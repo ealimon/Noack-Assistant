@@ -1,158 +1,176 @@
 <!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Noack Law — Workers’ Comp Assistant (Debug)</title>
+  <title>Noack Assistant — Minimal Preview</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --primary:#0b57d0; --primary-contrast:#fff; --bg:#fff; --text:#1f2328; --muted:#5f6b7a; --surface:#f4f6f8; --border:#d9dee3; --shadow:0 12px 40px rgba(0,0,0,.18); --radius:12px; }
-    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text)}
-    .hero{padding:48px 20px 80px;max-width:960px;margin:0 auto}
-    .hero h1{font-size:36px;margin:0 0 12px}
-    .hero p{color:var(--muted);font-size:18px;margin:0 0 24px}
-    .hero .cta{display:inline-block;background:var(--primary);color:#fff;padding:12px 16px;border-radius:8px;text-decoration:none}/* Debug banner */
-.debug-banner{position:fixed;top:12px;right:12px;background:#ffe08a;color:#5a4b00;border:1px solid #e6c365;padding:8px 12px;border-radius:8px;z-index:2147483648;box-shadow:var(--shadow)}
-.debug-banner button{margin-left:8px;background:var(--primary);color:#fff;border:0;border-radius:6px;padding:6px 10px;cursor:pointer}
-
-/* Floating button */
-.noack-chat-button{position:fixed;right:20px;bottom:20px;background:var(--primary);color:var(--primary-contrast);width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);cursor:pointer;z-index:2147483645;border:none}
-.noack-chat-button:hover{filter:brightness(1.05)} .noack-chat-button:focus{outline:3px solid rgba(11,87,208,.35)}
-
-/* Overlay + modal */
-.noack-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:2147483646}
-.noack-overlay.open{display:block}
-.noack-modal{position:fixed;right:20px;bottom:90px;width:min(420px,calc(100vw - 32px));height:min(70vh,640px);background:var(--bg);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:none;z-index:2147483647;border:1px solid var(--border)}
-.noack-modal.open{display:flex;flex-direction:column}
-.noack-header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--surface)}
-.noack-title{font-weight:600;font-size:16px}
-.noack-close{background:transparent;border:none;cursor:pointer;font-size:20px;color:var(--muted)}
-.noack-close:focus{outline:3px solid rgba(11,87,208,.35)}
-.noack-messages{flex:1;overflow-y:auto;padding:12px;background:linear-gradient(180deg,#fafbfc 0%,#ffffff 35%)}
-.noack-msg{padding:10px 12px;margin:8px 0;max-width:85%;border-radius:12px;line-height:1.35;white-space:pre-wrap;word-wrap:break-word}
-.noack-msg.user{background:#e7f0ff;align-self:flex-end;margin-left:auto;border:1px solid #c8dafd}
-.noack-msg.assistant{background:#f3f4f6;border:1px solid #e4e7eb}
-.noack-input{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border);background:var(--bg)}
-.noack-input input[type="text"]{flex:1;border:1px solid var(--border);padding:10px 12px;border-radius:8px;font-size:14px}
-.noack-input button{padding:10px 14px;background:var(--primary);color:var(--primary-contrast);border:none;border-radius:8px;cursor:pointer}
-.noack-input button:disabled{opacity:.6;cursor:not-allowed}
-.noack-modal.centered{right:50%;bottom:50%;transform:translate(50%,50%)}
-@media (max-width:520px){.noack-modal{right:12px;bottom:80px}.noack-chat-button{right:12px;bottom:12px}}
+    :root { --primary:#0b57d0; --bg:#fff; --text:#1f2328; --muted:#5f6b7a; --border:#d9dee3; --shadow:0 10px 30px rgba(0,0,0,.16); --radius:12px; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--text); }
+    .hero { padding: 40px 20px 80px; max-width: 900px; margin: 0 auto; }
+    .hero h1 { margin: 0 0 10px; font-size: 32px; }
+    .hero p { margin: 0 0 20px; color: var(--muted); }
+    .open-btn { position: fixed; top: 14px; right: 14px; background: var(--primary); color: #fff; border: 0; border-radius: 8px; padding: 10px 12px; cursor: pointer; box-shadow: var(--shadow); }/* Lightbox */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; }
+.overlay.open { display: block; }
+.modal { position: fixed; right: 20px; bottom: 20px; width: min(420px, calc(100vw - 32px)); height: min(70vh, 620px); background: var(--bg); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; display: none; }
+.modal.open { display: flex; flex-direction: column; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border); background: #f6f7f9; }
+.title { font-weight: 600; }
+.close { background: transparent; border: 0; cursor: pointer; font-size: 18px; color: var(--muted); }
+.messages { flex: 1; overflow-y: auto; padding: 12px; background: linear-gradient(180deg,#fafbfc 0%,#ffffff 35%); }
+.msg { padding: 10px 12px; margin: 8px 0; max-width: 85%; border-radius: 12px; line-height: 1.35; white-space: pre-wrap; word-wrap: break-word; border: 1px solid var(--border); }
+.msg.user { background: #e8f0fe; margin-left: auto; }
+.msg.assistant { background: #f3f4f6; }
+.input { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); }
+.input input { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.input button { background: var(--primary); color: #fff; border: 0; border-radius: 8px; padding: 10px 12px; cursor: pointer; }
   </style>
 </head>
 <body>
   <section class="hero">
     <h1>Noack Law — Workers’ Compensation</h1>
-    <p>Get quick answers about reporting, benefits, and next steps after a work injury. The assistant can respond in English or Spanish.</p>
-    <a class="cta" href="https://www.noacklawoffice.com/workers-compensation/" target="_blank" rel="noopener">Visit Workers’ Comp page</a>
-  </section>  <!-- Debug banner (extra open control) -->  <div class="debug-banner">
-    Widget loaded. If you don’t see the chat, click:
-    <button id="noackDebugOpen">Open chat</button>
-  </div>  <!-- Floating Chat Button -->  <button class="noack-chat-button" id="noackChatButton" aria-label="Open chat" title="Chat">
-    <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true">
-      <path d="M20 2H4a2 2 0 0 0-2 2v14l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"></path>
-    </svg>
-  </button>  <!-- Overlay + Modal -->  <div class="noack-overlay" id="noackOverlay" aria-hidden="true"></div>
-  <section class="noack-modal" id="noackModal" role="dialog" aria-modal="true" aria-labelledby="noackTitle">
-    <header class="noack-header">
-      <div class="noack-title" id="noackTitle">Noack Law Workers’ Comp Assistant</div>
-      <button class="noack-close" id="noackClose" aria-label="Close">✕</button>
+    <p>Click “Open Assistant” to chat. It answers from built‑in copy (no external data). It adds the Noack Workers’ Comp link only when relevant, once per conversation, and matches English/Spanish.</p>
+    <button class="open-btn" id="openBtn">Open Assistant</button>
+  </section>  <div class="overlay" id="overlay" aria-hidden="true"></div>
+  <section class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="title">
+    <header class="header">
+      <div class="title" id="title">Noack Assistant</div>
+      <button class="close" id="closeBtn" aria-label="Close">✕</button>
     </header>
-    <main class="noack-messages" id="noackMessages" aria-live="polite"></main>
-    <footer class="noack-input">
-      <input id="noackInput" type="text" placeholder="Type your question..." autocomplete="off" />
-      <button id="noackSend">Send</button>
+    <main class="messages" id="messages" aria-live="polite"></main>
+    <footer class="input">
+      <input id="input" type="text" placeholder="Type your question..." autocomplete="off" />
+      <button id="sendBtn">Send</button>
     </footer>
   </section>  <script>
-    console.log("Noack widget loaded");
-
-    // Config
-    const NOACK_CONFIG = {
-      mode: "topic_relevant_only",
-      disclaimer: true,
-      phraseVariation: "rotate",
-      frequency: "once_per_conversation",
-      url: "https://www.noacklawoffice.com/workers-compensation/",
-      spanishUrl: null,
-      utm: { source: "assistant", medium: "lightbox", campaign: "workers_comp_link" },
-      ui: { centeredLightbox: false, autoOpenDelayMs: 1000, openOnExitIntent: false },
-      backend: { useBackend: false, endpoint: "/chat" }
-    };
-
-    // Utilities
-    function normalizeWhitespace(t){return typeof t==="string"?t.replace(/\s+$/g,"").replace(/\r\n/g,"\n"):""}
-    function buildUrl(b,u){if(!u)return b;if(typeof u==="string"){if(u.startsWith("?")||u.startsWith("&"))return b+u;return b.endsWith("/")?b+u:b+"/"+u}const p=new URLSearchParams();for(const[k,v]of Object.entries(u)){if(v!=null&&v!=="")p.set(`utm_${k}`,v)}const s=b.includes("?")?"&":"?";return b+(p.toString()?s+p.toString():"")}
-    function detectLanguage(text){if(!text)return"unknown";const t=text.toLowerCase();const sh=["¿","¡","ó","á","é","í","ú","ñ","compensación","laboral","abogado","reclamación","beneficios","lesión","empleador","rehabilitación"].filter(s=>t.includes(s)).length;const eh=["workers","compensation","workers’","workers'","work","injury","employer","attorney","lawyer","claim","benefits","minnesota"].filter(s=>t.includes(s)).length;if(sh>eh&&sh>=2)return"es";if(eh>=sh&&eh>=2)return"en";if(/[a-z]/i.test(t)&&!/[ñáéíóú¿¡]/i.test(t))return"en";return"unknown"}
-    function detectTopic(text){if(!text)return false;const t=text.toLowerCase();const rs=[/workers?\s*['’]?\s*comp(?:ensation)?/i,/work(?:place)?\s+injur(?:y|ies)/i,/\bclaim(?:s|)\b/i,/\bbenefits?\b/i,/\battorney\b|\blawyer\b|\binsurer\b/i,/\bsettlement(?:s)?\b|\bhearing(?:s)?\b|\bfiling(?:s)?\b/i,/\bdepartment of labor and industry\b|\bdli\b/i,/compensación\s+laboral/i,/\blesión(?:es)?\s+en\s+el\s+trabajo/i,/\breclamación(?:es)?\b/i,/\bbeneficio(?:s)?\b/i,/\babogad(?:o|a|os|as)\b|\baseguradora(?:s)?\b/i,/\bacuerdo(?:s)?\b|\baudiencia(?:s)?\b|\bpresentar\b/i];return rs.some(r=>r.test(t))}
-    function detectEmergency(text){if(!text)return false;const t=text.toLowerCase();const rs=[/can't\s+feel\s+my\s+legs|no\s+siento\s+las\s+piernas/i,/severe\s+bleeding|hemorragia\s+severa/i,/difficulty\s+breathing|short(ness)?\s+of\s+breath|dificultad\s+para\s+respirar/i,/chest\s+pain|dolor\s+de\s+pecho/i,/\bunconscious\b|inconsciente/i,/\bstroke\b|derr(a|e)me\s+cerebral/i,/\boverdose\b|sobredosis/i,/\bcall\s+911\b|llame\s+al\s*911/i,/\bemergency\s+room\b|\bgo\s+to\s+the\s+er\b/i];return rs.some(r=>r.test(t))}
-    function pickPhraseIndex(n,t){if(!Number.isInteger(n)||n<0)return 0;if(!Number.isInteger(t)||t<=0)return 0;return n%t}
-
-    // Smart link
-    const EN_DISCLAIMER="Note: This information is general and not legal advice. It does not create an attorney–client relationship.";
-    const ES_DISCLAIMER="Aviso: Esta información es general y no constituye asesoramiento legal. No crea una relación abogado–cliente.";
-    const EN_PHRASES=[u=>`For more information, visit Noack Law Office’s Workers’ Compensation page: ${u}`,u=>`Learn more here: ${u}`,u=>`You can find additional details at Noack Law Office: ${u}`];
-    const ES_PHRASES=[u=>`Para más información, visite la página de Compensación Laboral de Noack Law Office: ${u}`,u=>`Obtenga más información aquí: ${u}`,u=>`Puede encontrar más detalles en Noack Law Office: ${u}`];
-
-    function applyNoackSmartLink({userMessage,responseText,responseLanguage,state,config}){
-      const cfg={...NOACK_CONFIG,...config}; const s=state||{linkShown:false,showCount:0};
-      const safeResponse=normalizeWhitespace(responseText||""); const safeUser=normalizeWhitespace(userMessage||"");
-      if(!safeResponse) return {text:"",state:s,triggered:false,reason:"empty"};
-      if(detectEmergency(safeUser)) return {text:safeResponse,state:s,triggered:false,reason:"emergency"};
-      let lang=responseLanguage||detectLanguage(safeResponse); if(lang!=="en"&&lang!=="es") return {text:safeResponse,state:s,triggered:false,reason:"lang_unsupported"};
-      let isRelevant=true; if(cfg.mode==="topic_relevant_only") isRelevant=detectTopic(`${safeUser}\n${safeResponse}`); if(!isRelevant) return {text:safeResponse,state:s,triggered:false,reason:"not_relevant"};
-      if(cfg.frequency==="once_per_conversation"&&s.linkShown) return {text:safeResponse,state:s,triggered:false,reason:"already_shown"};
-      const baseUrl=lang==="es"&&cfg.spanishUrl?cfg.spanishUrl:cfg.url; const effectiveUrl=buildUrl(baseUrl,cfg.utm);
-      if(safeResponse.includes(effectiveUrl)){ s.linkShown=true; return {text:safeResponse,state:s,triggered:false,reason:"url_present"}}
-      const phrases=lang==="en"?EN_PHRASES:ES_PHRASES; const idx=cfg.phraseVariation==="rotate"?pickPhraseIndex(s.showCount,phrases.length):0;
-      const linkLine=phrases[idx](effectiveUrl); const disclaimer=cfg.disclaimer?(lang==="en"?EN_DISCLAIMER:ES_DISCLAIMER):null;
-      const final=safeResponse+"\n\n"+(disclaimer?disclaimer+"\n":"")+linkLine; s.linkShown=true; s.showCount+=1; return {text:final,state:s,triggered:true};
+    // Minimal utilities
+    function norm(t){return typeof t==="string"?t.replace(/\s+$/g,"").replace(/\r\n/g,"\n"):""}
+    function detectLanguage(text){
+      if(!text) return "en";
+      const t=text.toLowerCase();
+      const esHits=["¿","¡","ó","á","é","í","ú","ñ","compensación","laboral","abogado","reclamación","beneficios","lesión"].filter(s=>t.includes(s)).length;
+      const enHits=["workers","compensation","workers’","workers'","work","injury","employer","attorney","claim","benefits"].filter(s=>t.includes(s)).length;
+      if(esHits>enHits && esHits>=2) return "es";
+      if(enHits>=esHits && enHits>=2) return "en";
+      if(/[a-z]/i.test(t) && !/[ñáéíóú¿¡]/i.test(t)) return "en";
+      return "en";
+    }
+    function detectTopic(text){
+      if(!text) return false;
+      const t=text.toLowerCase();
+      const pats=[/workers?\s*['’]?\s*comp/i,/work(?:place)?\s+injur/i,/\bclaim(?:s|)\b/i,/\bbenefits?\b/i,/\battorney\b|\blawyer\b|\binsurer\b/i,/compensación\s+laboral/i,/\blesión(?:es)?\s+en\s+el\s+trabajo/i,/\breclamación(?:es)?\b/i];
+      return pats.some(re=>re.test(t));
+    }
+    function detectEmergency(text){
+      if(!text) return false;
+      const t=text.toLowerCase();
+      const pats=[/can't\s+feel\s+my\s+legs|no\s+siento\s+las\s+piernas/i,/difficulty\s+breathing|dificultad\s+para\s+respirar/i,/severe\s+bleeding|hemorragia\s+severa/i,/chest\s+pain|dolor\s+de\s+pecho/i];
+      return pats.some(re=>re.test(t));
     }
 
-    // Assistant content
-    function generateBaseAnswer(userMessage,lang){
-      const msg=normalizeWhitespace(userMessage||""); if(detectEmergency(msg)){return lang==="es"?"Si no puede sentir las piernas o tiene una emergencia médica, llame al 911 o vaya a la sala de emergencias de inmediato. Luego, podemos hablar sobre cómo documentar y reportar la lesión.":"If you’re experiencing a medical emergency, call 911 or go to the nearest emergency department immediately. Once you’re safe, we can discuss documenting and reporting the injury."}
-      const relevant=detectTopic(msg);
-      if(relevant){
+    // Smart link (topic-relevant, language-matched, once-per-convo)
+    const LINK_URL = "https://www.noacklawoffice.com/workers-compensation/";
+    const EN_DISCLAIMER = "Note: This information is general and not legal advice. It does not create an attorney–client relationship.";
+    const ES_DISCLAIMER = "Aviso: Esta información es general y no constituye asesoramiento legal. No crea una relación abogado–cliente.";
+    const EN_PHRASES = [
+      u=>`For more information, visit Noack Law Office’s Workers’ Compensation page: ${u}`,
+      u=>`Learn more here: ${u}`,
+      u=>`You can find additional details at Noack Law Office: ${u}`
+    ];
+    const ES_PHRASES = [
+      u=>`Para más información, visite la página de Compensación Laboral de Noack Law Office: ${u}`,
+      u=>`Obtenga más información aquí: ${u}`,
+      u=>`Puede encontrar más detalles en Noack Law Office: ${u}`
+    ];
+    const convoState = { linkShown:false, showCount:0 };
+
+    function applySmartLink({ userMessage, responseText, lang }){
+      const safeUser = norm(userMessage||"");
+      const safeResp = norm(responseText||"");
+      if(!safeResp) return safeResp;
+      if(detectEmergency(safeUser)) return safeResp;
+
+      const relevant = detectTopic(`${safeUser}\n${safeResp}`);
+      if(!relevant) return safeResp;
+      if(convoState.linkShown) return safeResp;
+
+      const phrases = lang==="es" ? ES_PHRASES : EN_PHRASES;
+      const disclaimer = lang==="es" ? ES_DISCLAIMER : EN_DISCLAIMER;
+      const idx = convoState.showCount % phrases.length;
+      const final = safeResp + "\n\n" + disclaimer + "\n" + phrases[idx](LINK_URL);
+
+      convoState.linkShown = true;
+      convoState.showCount++;
+      return final;
+    }
+
+    // Simple built-in answers (no external data/LLM)
+    function generateAnswer(userMessage, lang){
+      const msg = norm(userMessage||"");
+      if(detectEmergency(msg)){
         return lang==="es"
-          ? ["Pasos iniciales después de una lesión laboral en Minnesota:","1) Informe la lesión a su empleador lo antes posible (idealmente dentro de 14 días).","2) Busque atención médica y mencione que la lesión es laboral.","3) Guarde registros de fechas, síntomas, testigos y facturas.","4) Si la aseguradora niega o retrasa la reclamación, puede presentar una petición o consultar con un abogado.","5) Siga las restricciones médicas; el incumplimiento puede afectar los beneficios."].join("\n")
-          : ["First steps after a Minnesota work injury:","1) Report the injury to your employer as soon as possible (ideally within 14 days).","2) Seek medical care and tell the provider the injury is work-related.","3) Keep records of dates, symptoms, witnesses, and medical bills.","4) If the insurer denies or delays the claim, you can file a Claim Petition or consult an attorney.","5) Follow your doctor’s restrictions; noncompliance can affect benefits."].join("\n");
+          ? "Si tiene una emergencia médica, llame al 911 o vaya a la sala de emergencias de inmediato. Luego, podemos hablar sobre cómo documentar y reportar la lesión."
+          : "If you’re experiencing a medical emergency, call 911 or go to the nearest emergency department immediately. Once you’re safe, we can discuss documenting and reporting the injury.";
       }
-      return lang==="es" ? "Puedo ayudar con preguntas sobre compensación laboral en Minnesota: reportes, beneficios y próximos pasos. ¿Qué le gustaría saber?" : "I can help with Minnesota workers’ comp questions: reporting, benefits, and next steps. What would you like to know?";
+      if(detectTopic(msg)){
+        return lang==="es"
+          ? [
+              "Pasos iniciales después de una lesión laboral en Minnesota:",
+              "1) Informe la lesión a su empleador lo antes posible (idealmente dentro de 14 días).",
+              "2) Busque atención médica y mencione que la lesión es laboral.",
+              "3) Guarde registros de fechas, síntomas, testigos y facturas.",
+              "4) Si la aseguradora niega o retrasa la reclamación, puede presentar una petición o consultar con un abogado."
+            ].join("\n")
+          : [
+              "First steps after a Minnesota work injury:",
+              "1) Report the injury to your employer as soon as possible (ideally within 14 days).",
+              "2) Seek medical care and tell the provider the injury is work-related.",
+              "3) Keep records of dates, symptoms, witnesses, and medical bills.",
+              "4) If the insurer denies or delays the claim, you can file a Claim Petition or consult an attorney."
+            ].join("\n");
+      }
+      return lang==="es"
+        ? "Puedo ayudar con preguntas sobre compensación laboral en Minnesota: reportes, beneficios y próximos pasos. ¿Qué le gustaría saber?"
+        : "I can help with Minnesota workers’ comp questions: reporting, benefits, and next steps. What would you like to know?";
     }
 
     // UI
-    const elBtn=document.getElementById("noackChatButton");
-    const elOverlay=document.getElementById("noackOverlay");
-    const elModal=document.getElementById("noackModal");
-    const elMessages=document.getElementById("noackMessages");
-    const elInput=document.getElementById("noackInput");
-    const elSend=document.getElementById("noackSend");
-    const elClose=document.getElementById("noackClose");
-    document.getElementById("noackDebugOpen").addEventListener("click", openChat);
+    const overlay = document.getElementById("overlay");
+    const modal = document.getElementById("modal");
+    const messages = document.getElementById("messages");
+    const input = document.getElementById("input");
+    const openBtn = document.getElementById("openBtn");
+    const closeBtn = document.getElementById("closeBtn");
+    const sendBtn = document.getElementById("sendBtn");
 
-    const convoState={linkShown:false,showCount:0};
+    function openChat(){ overlay.classList.add("open"); modal.classList.add("open"); overlay.setAttribute("aria-hidden","false"); setTimeout(()=>input.focus(),100); }
+    function closeChat(){ overlay.classList.remove("open"); modal.classList.remove("open"); overlay.setAttribute("aria-hidden","true"); }
 
-    function openChat(){ elOverlay.classList.add("open"); elModal.classList.add("open"); elOverlay.setAttribute("aria-hidden","false"); setTimeout(()=>{ elInput?.focus(); },100); }
-    function closeChat(){ elOverlay.classList.remove("open"); elModal.classList.remove("open"); elOverlay.setAttribute("aria-hidden","true"); elBtn?.focus(); }
+    openBtn.addEventListener("click", openChat);
+    closeBtn.addEventListener("click", closeChat);
+    overlay.addEventListener("click", (e)=>{ if(e.target===overlay) closeChat(); });
+    window.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && modal.classList.contains("open")) closeChat(); });
 
-    elBtn.addEventListener("click", openChat);
-    elClose.addEventListener("click", closeChat);
-    elOverlay.addEventListener("click",(e)=>{ if(e.target===elOverlay) closeChat(); });
-    window.addEventListener("keydown",(e)=>{ if(e.key==="Escape"&&elModal.classList.contains("open")) closeChat(); });
+    function addMsg(role,text){ const d=document.createElement("div"); d.className="msg "+role; d.textContent=text; messages.appendChild(d); messages.scrollTop=messages.scrollHeight; }
 
-    function addMessage(role,text){ const div=document.createElement("div"); div.className="noack-msg "+role; div.textContent=text; elMessages.appendChild(div); elMessages.scrollTop=elMessages.scrollHeight; }
+    function handleSend(){
+      const val = (input.value||"").trim();
+      if(!val) return;
+      input.value = "";
+      addMsg("user", val);
 
-    function detectLanguageFromUser(val){ let lang=detectLanguage(val); if(lang!=="en"&&lang!=="es") lang="en"; return lang; }
+      let lang = detectLanguage(val);
+      if(lang!=="en" && lang!=="es") lang = "en";
 
-    async function handleSend(){
-      const val=(elInput.value||"").trim(); if(!val) return; elInput.value=""; addMessage("user",val);
-      const lang=detectLanguageFromUser(val);
-      const base=generateBaseAnswer(val,lang);
-      const { text }=applyNoackSmartLink({ userMessage:val, responseText:base, responseLanguage:lang, state:convoState, config:NOACK_CONFIG });
-      addMessage("assistant",text);
+      const base = generateAnswer(val, lang);
+      const final = applySmartLink({ userMessage: val, responseText: base, lang });
+      addMsg("assistant", final);
     }
-    elSend.addEventListener("click", handleSend);
-    elInput.addEventListener("keydown",(e)=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); handleSend(); } });
+    sendBtn.addEventListener("click", handleSend);
+    input.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); handleSend(); } });
 
-    // Auto-open for debug
-    setTimeout(openChat, NOACK_CONFIG.ui.autoOpenDelayMs || 1000);
+    // Auto-open so you immediately see it
+    window.addEventListener("load", () => setTimeout(openChat, 600));
   </script></body>
 </html>
