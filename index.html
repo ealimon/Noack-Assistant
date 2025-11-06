@@ -1,258 +1,43 @@
-<!DOCTYPE html><html lang="es">
+<!doctype html>
+<html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Asistente de Noack Law</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Asistente de Noack Law</title>
   <style>
-    :root {
-      /* THEME - From noacklawoffice.com */
-      --navy: #000000;             /* Black from logo */
-      --primary: #9a1a23;          /* Dark Red from CTA */
-      --primary-dark: #7a151c;
-      --gold: #b59c73;             /* Gold/Tan accent */
-      --bg: #ffffff;
-      --page-bg: #f2efe8;         /* Cream page background */
-      --text: #333333;
-      --muted: #555555;
-      --border: #e0e0e0;
-      --answer-bg: #fdfdfd;
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #eee; padding: 20px; }
+    .assistant-card {
+      max-width: 360px;
+      border-radius: 12px;
+      background: #fdfdfd;
+      padding: 16px;
+      border: 1px solid #ddd;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     }
-    * { box-sizing: border-box; }
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--page-bg);
-      color: var(--text);
-      font-family: 'Georgia', 'Times New Roman', Times, serif;
+    h3 { margin: 0 0 16px; color: #333; }
+    .suggestions-list { display: flex; flex-direction: column; gap: 8px; }
+    .suggestion-button {
+      padding: 16px 12px;
+      border-radius: 8px;
+      background: #c9a37b;
+      color: white;
+      border: none;
+      text-align: left;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
     }
-    .wrap { max-width: 420px; margin: 0 auto; padding: 14px; }.widget {
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.12);
-  padding: 12px 16px 16px 16px;
-  display: grid;
-  gap: 12px;
-}
-
-.titlebar {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-.avatar {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: var(--navy);
-  display: grid; place-items: center;
-  color: #fff; font-weight: bold; font-size: 18px;
-}
-.title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--navy);
-}
-
-.answer-box {
-  background: var(--answer-bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
-  min-height: 200px;
-  max-height: 280px;
-  overflow: auto;
-  font-size: 15px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-.answer-box.suggestions-mode {
-  padding-top: 6px;
-}
-.answer-box.empty { color: var(--muted); }
-
-.suggestions h3 { margin: 0 0 10px 0; font-size: 14px; color: var(--navy); font-weight: bold; }
-.suggestions ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.suggestions li {
-  background: var(--gold);
-  color: #fff;
-  border-radius: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.suggestions li:hover { background: var(--primary); }
-
-form { display: grid; gap: 8px; }
-.input-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 8px;
-  align-items: stretch;
-}
-textarea {
-  resize: none;
-  min-height: 48px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 16px;
-  font-family: inherit;
-  line-height: 1.4;
-}
-textarea:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(181, 156, 115, 0.2); outline: none; }
-
-button {
-  border: 0;
-  border-radius: 8px;
-  padding: 0 16px;
-  font-size: 15px;
-  font-weight: bold;
-  cursor: pointer;
-  font-family: inherit;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-#submit-btn { background: var(--primary); color: #fff; min-width: 100px; }
-#submit-btn:hover { background: var(--primary-dark); }
-#submit-btn:disabled { opacity: .65; cursor: not-allowed; }
-
-#clear-btn {
-  min-width: 80px;
-  background: #f0f0f0;
-  color: var(--muted);
-  border: 1px solid var(--border);
-}
-#clear-btn:hover { background: #e5e5e5; }
-
-.footer {
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-  display: grid;
-  gap: 14px;
-}
-.firm-name {
-  font-weight: 900;
-  color: var(--navy);
-  font-size: 18px;
-}
-.select{
-  width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#fff; font-weight:bold; color:#333; font-family:inherit; font-size: 15px;
-}
-.call-btn {
-  display: block;
-  text-align: center;
-  background: var(--navy);
-  color: #fff;
-  padding: 12px 14px;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: bold;
-  font-size: 15px;
-}
-.call-btn:hover { background: #222; }
-
-.contact {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
-  background: #fff;
-  display: grid;
-  gap: 8px;
-  font-size: 15px;
-}
-.contact a { color: var(--primary); text-decoration: none; font-weight: bold; }
-.contact a:hover { text-decoration: underline; }
-
-.disclaimer { font-size: 12px; color: var(--muted); line-height: 1.4; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="widget" role="application" aria-labelledby="assistant-title">
-      <div class="titlebar">
-        <div class="avatar" aria-hidden="true">NL</div>
-        <h1 id="assistant-title" class="title">Asistente de Noack Law</h1>
-      </div>  <div id="answer" class="answer-box suggestions-mode empty" aria-live="polite"></div>
-
-  <form id="ask-form">
-    <label class="sr-only" for="question">Su pregunta</label>
-    <div class="input-row">
-      <textarea id="question" name="question" placeholder="Escriba su pregunta…" required></textarea>
-      <button id="submit-btn" type="submit" aria-label="Enviar pregunta">Preguntar</button>
-      <button id="clear-btn" type="button" aria-label="Borrar pregunta">Borrar</button>
+  <div class="assistant-card" aria-label="Asistente de Noack Law">
+    <h3>Asistente de Noack Law</h3>
+    <div class="suggestions-list" aria-label="Preguntas sugeridas">
+      <button class="suggestion-button">¿Qué es la compensación por accidente laboral?</button>
+      <button class="suggestion-button">¿Cuánto tiempo tengo para presentar una reclamación?</button>
+      <button class="suggestion-button">¿Qué debo hacer si mi reclamación fue denegada?</button>
+      <button class="suggestion-button">¿Qué factores afectan el valor de un caso?</button>
     </div>
-  </form>
-
-  <div class="footer">
-    <div id="firm-name" class="firm-name">Noack Law Office</div>
-    <select id="locationSelect" class="select" aria-label="Seleccionar oficina"></select>
-    <a id="call-btn" class="call-btn" href="#">Llamar</a>
-    <div class="contact" aria-label="Información de contacto">
-      <div><strong>Oficina:</strong> <span id="office-address"></span></div>
-      <div><strong>Formulario de contacto:</strong> <a id="contact-form-link" href="#" target="_blank" rel="noopener">Abrir formulario</a></div>
-    </div>
-    <div class="disclaimer">Información general únicamente—no es asesoramiento legal. El uso de este asistente no crea una relación abogado–cliente.</div>
   </div>
-</div>
-  </div>  <script>
-    // ======================
-    // Config — Pre-filled with your data
-    // ======================
-    const CONFIG = {
-      firmName: "Noack Law Office",
-      workersCompUrl: "https://www.noacklawoffice.com/areas-de-practica/compensacion-para-trabajadores/",
-
-      locations: [
-        { id: "excelsior", name: "Oficina de Excelsior", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "350 Highway 7, Suite 210, Excelsior, MN 55331", contactFormUrl: "https://www.noacklawoffice.com/lp/abogado-de-compensacion-laboral/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:es&hbx_pk={keyword}#contactform" },
-        { id: "minneapolis", name: "Oficina de Minneapolis", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "1515 East Lake Street, Suite 200, Minneapolis, MN 55407", contactFormUrl: "https://www.noacklawoffice.com/lp/abogado-de-compensacion-laboral/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:es&hbx_pk={keyword}#contactform" },
-        { id: "stpaul", name: "Oficina de St. Paul", phone: "952-467-8481", phoneHref: "tel:+19524678481", address: "925 Payne Avenue, Suite 201, St. Paul, MN 55130", contactFormUrl: "https://www.noacklawoffice.com/lp/abogado-de-compensacion-laboral/?dcmp=Google:Search:4679884:55331:pd_creative:12:FL50:es&hbx_pk={keyword}#contactform" }
-      ],
-      defaultLocationId: "excelsior"
-    };
-
-    // Questions from your Spanish FAQ - BUG FIX: No stray characters
-    const SUGG_ES = ["¿Qué es la compensación por accidente laboral?", "¿Cuánto tiempo tengo para presentar una reclamación?", "¿Qué debo hacer si mi reclamación fue denegada?", "¿Qué factores afectan el valor de un reclamo?"];
-    const SUGG_EN = ["What is workers' compensation?", "How long do I have to file a claim?", "What if my claim was denied?", "What factors affect a claim's value?"];
-
-    // ======================
-    // Utilities & Smart Link
-    // ======================
-    const convoState = { linkShown: false, showCount: 0 };
-    function norm(t){return typeof t==="string"?t.replace(/\s+$/g,""):""}
-    function detectLanguage(t){if(!t)return"es";const e=t.toLowerCase(),n=["¿","¡","ó","á","é","í","ú","ñ","compensación","laboral","abogado","reclamación","beneficios","lesión"].filter(s=>e.includes(s)).length,i=["workers","compensation","claim","benefits","attorney","injury"].filter(s=>e.includes(s)).length;if(n>i&&n>=2)return"es";if(i>=n&&i>=2)return"en";if(/[a-z]/i.test(e)&&!/[ñáéíóú¿¡]/i.test(e))return"en";return"es"}
-    function detectTopic(t){if(!t)return!1;const e=t.toLowerCase(),n=[/workers?\s*['’]?\s*comp/i,/work(?:place)?\s+injur/i,/\bclaim/i,/\bbenefit/i,/\battorney/i,/compensación\s+laboral/i,/\blesión/i,/\breclamación/i];return n.some(c=>c.test(e))}
-    function applySmartLink({userMessage:u,responseText:r,lang:l}){const s=norm(u||""),t=norm(r||"");if(!t||t.includes("emergencia médica"))return t;const n=detectTopic(`${s}\n${t}`);if(!n||convoState.linkShown)return t;const o=l==="es"?`Para más información, visite nuestra página de Compensación Laboral: ${CONFIG.workersCompUrl}`:`For more information, visit our Workers’ Compensation page: ${CONFIG.workersCompUrl}`;const c=l==="es"?"Aviso: Esta información es general y no constituye asesoramiento legal.":"Note: This information is general and not legal advice.";const i=t+"\n\n"+c+"\n"+o;return convoState.linkShown=!0,convoState.showCount++,i}
-
-    // ======================
-    // Built-in content from your Spanish page
-    // ======================
-    function answerES(msg){const m=norm(msg).toLowerCase();if(/emergencia/.test(m))return"Si está experimentando una emergencia médica, llame al 911 o vaya a la sala de emergencias de inmediato. Una vez que esté a salvo, podemos discutir su caso.";if(/denegada|rechazada|denied|rejected/.test(m))return"Muchas reclamaciones iniciales son rechazadas. Si eso le sucedió, es importante saber que aún puede recibir beneficios. Nuestros abogados tienen más de 80 años de experiencia combinada y podemos ayudarle a apelar esas reclamaciones para recibir los beneficios que merecen.";if(/tiempo|cuánto|how long|días|days/.test(m))return"En Minnesota, debe informar a su empleador sobre su lesión lo antes posible. Informar dentro de los primeros 14 días es lo más seguro, pero puede informar hasta 30 días después del accidente. Generalmente tiene hasta tres años desde la fecha de la lesión para presentar formalmente una reclamación.";if(/qué es|what is|cómo funciona/.test(m))return"La compensación por accidente laboral es un seguro que los empleadores adquieren. Si un empleado sufre una lesión en el trabajo, el seguro puede cubrir el reclamo del trabajador. Solo necesita demostrar que su lesión ocurrió como resultado directo de sus deberes laborales.";if(/valor|cuánto vale|value/.test(m))return"El valor de su reclamo depende de varios factores, incluyendo: su salario semanal promedio (AWW), los costos de sus tratamientos médicos, si su lesión resulta en una discapacidad permanente, y los costos de rehabilitación vocacional si no puede regresar a su trabajo anterior.";return"Puedo ayudar con preguntas sobre la compensación por accidente laboral en Minnesota: cómo presentar un reclamo, qué beneficios puede recibir y qué hacer si su reclamo es denegado. ¿En qué puedo ayudarle hoy?"}
-    function answerEN(msg){if(/emergency/.test(norm(msg).toLowerCase()))return"If you are having a medical emergency, please call 911. We can discuss your claim after you are safe.";return"I can answer questions about Minnesota workers' compensation. For specific legal advice, please contact our office directly. How can I help you today?"}
-
-    // ======================
-    // UI Logic
-    // ======================
-    const els={answer:document.getElementById("answer"),question:document.getElementById("question"),askForm:document.getElementById("ask-form"),submitBtn:document.getElementById("submit-btn"),clearBtn:document.getElementById("clear-btn"),firmName:document.getElementById("firm-name"),locationSelect:document.getElementById("locationSelect"),callBtn:document.getElementById("call-btn"),officeAddress:document.getElementById("office-address"),contactFormLink:document.getElementById("contact-form-link")};
-    const locMap=new Map(CONFIG.locations.map(l=>[l.id,l]));
-
-    function setLocation(id){const l=locMap.get(id);if(!l)return;els.callBtn.href=l.phoneHref;els.callBtn.textContent=`Llamar ${l.phone}`;els.officeAddress.textContent=l.address;els.contactFormLink.href=l.contactFormUrl}
-    function renderSuggestions(lang="es"){const s=lang==="es"?SUGG_ES:SUGG_EN;const t=lang==="es"?"Preguntas sugeridas":"Suggested questions";els.answer.classList.add("empty","suggestions-mode");els.answer.innerHTML=`<div class="suggestions"><h3>${t}</h3><ul>${s.map(q=>`<li data-q="$${q.replace(/"/g,"&quot;")}">$${q}</li>`).join("")}</ul></div>`;els.answer.querySelectorAll("li").forEach(l=>{l.addEventListener("click",()=>{els.question.value=l.getAttribute("data-q");els.askForm.requestSubmit()})})}
-    function showAnswer(t){els.answer.classList.remove("empty","suggestions-mode");els.answer.textContent=t}
-
-    els.askForm.addEventListener("submit",async e=>{e.preventDefault();const q=els.question.value.trim();if(!q)return;els.submitBtn.disabled=!0;showAnswer(detectLanguage(q)==="es"?"Pensando...":"Thinking...");await new Promise(r=>setTimeout(r,300));const l=detectLanguage(q);const b=l==="es"?answerES(q):answerEN(q);const f=applySmartLink({userMessage:q,responseText:b,lang:l});showAnswer(f);els.submitBtn.disabled=!1;els.question.focus();els.question.select()});
-    els.clearBtn.addEventListener("click",()=>{els.question.value="";convoState.linkShown=!1;renderSuggestions(detectLanguage(els.question.value));els.question.focus()});
-
-    // Init
-    els.firmName.textContent=CONFIG.firmName;
-    CONFIG.locations.forEach(l=>{const o=document.createElement("option");o.value=l.id;o.textContent=l.name;els.locationSelect.appendChild(o)});
-    els.locationSelect.value=CONFIG.defaultLocationId;setLocation(CONFIG.defaultLocationId);
-    els.locationSelect.addEventListener("change",e=>setLocation(e.target.value));
-    renderSuggestions("es");
-  </script></body>
+</body>
 </html>
